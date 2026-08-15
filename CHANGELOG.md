@@ -1,3 +1,42 @@
+# [0.47.0](https://github.com/nebulord-dev/gitrelic/compare/v0.46.1...v0.47.0) (2026-08-15)
+
+
+### Bug Fixes
+
+* **deps:** refresh security overrides and sync bundled-deps mirror ([#80](https://github.com/nebulord-dev/gitrelic/issues/80)) ([ad7c065](https://github.com/nebulord-dev/gitrelic/commit/ad7c0659db114a427c1239638c55e0a0cb6e0cc7))
+
+
+### BREAKING CHANGES
+
+* **deps:** disguised as a security pin. Nothing in the tree
+triggers this today, which is precisely why it would go unnoticed.
+Bounded the four bare selectors at their major:
+
+- postcss@<8.5.23      -> postcss@>=8.0.0 <8.5.23
+- ws@<8.21.0           -> ws@>=8.0.0 <8.21.0
+- undici@<6.28.0       -> undici@>=6.0.0 <6.28.0
+- dompurify@<3.4.13    -> dompurify@>=3.0.0 <3.4.13
+
+These match the lower bounds the advisories actually specify (ws is
+`>= 8.0.0`, undici 6.x is `>= 6.0.0`). postcss and dompurify are
+narrowed to the 8.x / 3.x lines deliberately — their advisories
+nominally cover everything below the patched version, but no earlier
+major is in the tree and forcing one across a major would break it.
+
+Documentation (CLAUDE.md):
+- Added a security-override table mapping each override to its backing
+  GHSA IDs and its drop condition. package.json is JSON and can't hold
+  comments, so the boundaries were previously unauditable.
+- Documented that the esbuild override is a tripwire, not an upgrade:
+  esbuild is an optional peer of vite 8 (which uses rolldown), so
+  narrowing the range dropped it from the tree rather than bumping it.
+- Retitled the vitepress>vite section to drop the patch version, which
+  went stale on every bump.
+
+Lockfile diff is limited to the four override key strings; no package
+resolution changed. Verified: frozen-lockfile install, build, test
+(344 core + 787 web), lint, format:check, docs:build, pnpm audit clean.
+
 ## [0.46.1](https://github.com/nebulord-dev/gitrelic/compare/v0.46.0...v0.46.1) (2026-05-11)
 
 
