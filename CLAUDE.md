@@ -225,9 +225,37 @@ When bumping any runtime dep in `packages/core`, bump the matching entry in `app
 
 `pnpm -r up -L <pkg>` handles this automatically when both packages declare the dep (common case: `execa`).
 
-### Why `vitepress>vite` is pinned to `^6.4.2`
+### Why `vitepress>vite` is pinned to vite 6
 
 That override is **scoped** — it only pins vite **where vitepress depends on it**, not the top-level vite used by `apps/web`. VitePress 1.x was built against vite 6; vite 7+ has breaking changes VitePress 1.x never absorbed. The lockfile happily holds both `vite@6.4.x` (inside vitepress) and `vite@8.x` (for `apps/web`). Taze will flag the top-level vite range even though the override pins a different vite instance to 6 — that's not drift, it's two separate vites in the graph. Drop the override only when moving to VitePress 2.x (which supports vite 7+).
+
+The heading deliberately says "vite 6" rather than a patch version — the pin gets bumped on every vite 6 security patch, and a version in the heading goes stale immediately.
+
+### Security overrides
+
+`package.json` is JSON and can't hold comments, so the advisory backing each security override is recorded here. Without this table nobody can tell whether a boundary is correct, or when a pin becomes safe to drop.
+
+| Override | Advisories | Drop when |
+| --- | --- | --- |
+| `ws@>=8.0.0 <8.21.0` | GHSA-96hv-2xvq-fx4p, GHSA-58qx-3vcg-4xpx | `ink` ships a release resolving ws ≥ 8.21.0 |
+| `undici@>=6.0.0 <6.28.0` | GHSA-8xcm-r25x-g524, GHSA-m8rv-5g2x-5cg5, GHSA-v3r7-h72x-cjcm, GHSA-35p6-xmwp-9g52, GHSA-g8m3-5g58-fq7m, GHSA-p88m-4jfj-68fv | `semantic-release` → `@actions/core` drops undici 6 |
+| `undici@>=7.0.0 <7.29.0` | GHSA-4cwx-7wf7-3272, GHSA-jr45-8vmc-qm54, GHSA-hm92-r4w5-c3mj, GHSA-vmh5-mc38-953g, GHSA-pr7r-676h-xcf6 | `@semantic-release/github` requires undici ≥ 7.29.0 |
+| `js-yaml@>=4.0.0 <4.3.1` | GHSA-5p4m-2wfm-xmqj, GHSA-52cp-r559-cp3m, GHSA-h67p-54hq-rp68 | `cosmiconfig` requires js-yaml ≥ 4.3.1 |
+| `postcss@>=8.0.0 <8.5.23` | GHSA-fxqj-rqcc-2cmp, GHSA-r28c-9q8g-f849 | vitepress/vue toolchain resolves postcss ≥ 8.5.23 |
+| `dompurify@>=3.0.0 <3.4.13` | GHSA-55q2-fjhq-7xh7, GHSA-c2j3-45gr-mqc4 | `mermaid` requires dompurify ≥ 3.4.13 |
+| `esbuild@>=0.27.3 <0.28.1` | GHSA-g7r4-m6w7-qqqr | nothing in the tree can match the selector (see below) |
+| `vitepress>vite` | GHSA-fx2h-pf6j-xcff, GHSA-v6wh-96g9-6wx3 | moving to VitePress 2.x |
+
+**Always bound the lower end at the major.** Write `ws@>=8.0.0 <8.21.0`, never `ws@<8.21.0`. A bare `<X` selector also matches every earlier major, so the override would silently force a major upgrade on any future transitive that pulls an older line — a breaking change disguised as a security pin. Nothing in the tree triggers it today, which is exactly why it would be missed. The `postcss` and `dompurify` entries are narrowed to the 8.x / 3.x lines for this reason even though their advisories nominally cover everything below the patched version.
+
+**The `esbuild` override is a tripwire, not an upgrade.** esbuild is an *optional* `peerDependency` of vite 8, and vite 8 bundles rolldown as its actual bundler — it never calls esbuild. Narrowing the peer range caused pnpm to **drop** esbuild and its 26 `@esbuild/*` platform packages from the vite 8 subtree rather than install 0.28.1. That's the desired outcome (the vulnerable copy is gone, builds verified green), but it means no esbuild in the tree matches the selector anymore. Leave it in place as a guard against a future dep reintroducing a 0.27.x. The separate `esbuild@<0.25.0` floor and the surviving `esbuild@0.25.12` under vite 6 are unrelated and not vulnerable — GHSA-g7r4-m6w7-qqqr starts at 0.27.3.
+
+Regenerate this table from the live feed with:
+
+```bash
+gh api repos/nebulord-dev/gitrelic/dependabot/alerts --paginate \
+  -q '.[] | select(.state=="open") | "\(.dependency.package.name)\t\(.security_advisory.ghsa_id)\t\(.security_vulnerability.vulnerable_version_range)"' | sort -u
+```
 
 ## Releases & Versioning
 
