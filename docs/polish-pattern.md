@@ -179,7 +179,7 @@ The four analyzers in Batch 1 all share the "table is rotated hero" pathology. T
 - **Scope expansion:** Like blast-radius, the polish ticket exceeded its original bottom-panel-only spec — a forensic look at the rendered Rewrite Ratio tab against React data revealed every top-30 score tied at 100 (formula bug) and two of three alt-tabs duplicating other analyzers' heroes (hero audit). Same "*hero scope creep is OK when warranted*" precedent.
 - **Removes:** `RewriteRatioTab`'s per-file `SortableTable` (~107 lines). Inspector + diverging-bar already cover per-file detail.
 
-### `parallel-dev` *(spec — RELIC-309)*
+### `parallel-dev` *(shipped — RELIC-309)*
 
 - **Decision context:** [RELIC-333](https://linear.app/nebulord/issue/RELIC-333) resolved — keep separate, differentiate. The shared `Swimlanes` and `Timeline` heroes are repo-wide commit-firehose visualizations that encode nothing about either analyzer's per-file score. Both heroes get **stripped from this preset entirely** (still alive in Contributors / Overview where they answer the right question).
 - **Bottom panel:** Narrative-KPI.
@@ -272,25 +272,34 @@ The four analyzers in Batch 1 all share the "table is rotated hero" pathology. T
 - **Removes:** `Pairs` / `Co-commits` / `Collaborators` / `Avg Commits-Pair` / `Top Pair Commits` metrics-strip slots; old `CoAuthorsTab.tsx` (replaced by 2 new tabs); `Repository Map` viz label string.
 - **Pre-1.0 versioning:** ships as `feat:` (minor bump). Sidebar registry key unchanged. No `feat!:` trigger.
 
+## Shipped without a spec section
+
+These analyzers completed their polish pass but never had a `###` section back-filled above. The PR is the authoritative record of what was decided; treat the absence of a section here as missing documentation, not as unfinished work.
+
+| Analyzer | Ticket | PR | Evidence |
+|---|---|---|---|
+| `age-map` | RELIC-305 | [#66](https://github.com/nebulord-dev/gitrelic/pull/66) | `apps/docs/analyzers/age-map.md`, `docsPath` set |
+| `ghost-files` | RELIC-318 | [#71](https://github.com/nebulord-dev/gitrelic/pull/71) | `apps/docs/analyzers/ghost-files.md`, `docsPath` set |
+| `rename-tracking` (Renames) | RELIC-324 | [#74](https://github.com/nebulord-dev/gitrelic/pull/74) | `apps/docs/analyzers/renames.md`, `docsPath` set |
+
+> **Ticket-numbering warning.** PR #74 shipped *rename-tracking* but was tagged `RELIC-321`, which is the **hotspot-clustering** ticket — so RELIC-321 auto-closed as Done while hotspot-clustering was never touched, and RELIC-324 (the real rename-tracking ticket) stayed open. When reconciling this doc against Linear, trust `apps/docs/analyzers/` and `registry.ts` `docsPath` over ticket state.
+
 ## Pending (Batches 2–N)
 
 Not yet decided. Will be filled in as each batch is worked through. Listed here so the doc is honest about what's done vs. open.
 
 | Analyzer | Batch | Notes from initial screenshot review |
 |---|---|---|
-| `knowledge-concentration` (Knowledge Silos) | — | Already shipped. Reference implementation. |
-| `ghost-files` | 3 | Same sunburst as Knowledge Silos. Likely narrative-KPI. |
+| `knowledge-concentration` (Knowledge Silos) | — | Panel shipped as the reference implementation, but **no docs page and no `docsPath`** — the docs half of the DoD is outstanding. Tracked at RELIC-319. |
 | `cursed-files` | TBD | Bottom table earns space (REASONS chips). Probably keeps current form. |
-| `age-map` | TBD | Treemap hero. Generic table — likely narrative-KPI. |
 | `test-coverage` | TBD | Treemap. Bottom table earns space (different unit). |
 | `loc` (Languages) | TBD | Stacked bars. Bottom table earns space (per-language vs per-directory). |
 | `hotspot` | TBD | Strong scatter hero, signals chips earn table's space. Probably keeps. |
 | `coupling` | TBD | Matrix heatmap. Bottom shows same-dir pairs vs hero's cross-dir — earns space. |
 | `churn-velocity` | TBD | Not screenshotted yet. |
 | `dead-code` | TBD | Not screenshotted yet (Stale Files in screenshots may be related). |
-| `hotspot-clustering` | TBD | Not screenshotted yet. |
+| `hotspot-clustering` | TBD | Not screenshotted yet. **RELIC-321 is marked Done in Linear but no work shipped** — see the warning above. |
 | `complexity-trend` | TBD | Multi-line time series. Bottom table earns space (precise growth numbers). |
-| `rename-tracking` (Renames) | TBD | Sankey hero; bottom table redundant. Likely narrative-KPI. |
 
 ## What this changes for polish tickets
 
