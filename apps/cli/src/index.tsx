@@ -85,6 +85,13 @@ if (!resolvedRoot) {
 // narrowing from the process.exit() guard doesn't survive into those closures.
 const repoPath: string = resolvedRoot;
 
+// Analysis is always whole-repo, so a subdirectory silently becomes something
+// broader than what was asked for. Say so. stderr specifically: stdout has to
+// stay parseable in --json mode.
+if (repoPath !== inputPath) {
+  process.stderr.write(`Analyzing repository root: ${repoPath}\n`);
+}
+
 if (opts.json) {
   // Non-interactive JSON mode
   try {
