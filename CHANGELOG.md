@@ -1,3 +1,10 @@
+## [0.47.1](https://github.com/nebulord-dev/gitrelic/compare/v0.47.0...v0.47.1) (2026-08-16)
+
+
+### Bug Fixes
+
+* **cli:** resolve the repo root so gitrelic runs from any subdirectory ([#82](https://github.com/nebulord-dev/gitrelic/issues/82)) ([427a513](https://github.com/nebulord-dev/gitrelic/commit/427a513c5e96097002b5a82b88e1830ea879a301))
+
 # [0.47.0](https://github.com/nebulord-dev/gitrelic/compare/v0.46.1...v0.47.0) (2026-08-15)
 
 
