@@ -3,7 +3,7 @@ import { createServer } from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { useState, useEffect } from 'react';
-import { runGitrelic } from '@gitrelic/core';
+import { runGitrelic, resolveRepoRoot } from '@gitrelic/core';
 import { program } from 'commander';
 import { render } from 'ink';
 import open from 'open';
@@ -22,7 +22,11 @@ program
     'Git archaeology — understand the history and health of your codebase',
   )
   .version(pkg.version, '-v, --version')
-  .option('-p, --path <path>', 'Path to the git repository', process.cwd())
+  .option(
+    '-p, --path <path>',
+    'Path to the git repository, or any directory inside it',
+    process.cwd(),
+  )
   .option(
     '-b, --branch <branch>',
     'Branch to analyze (default: current branch)',
@@ -48,18 +52,44 @@ const opts = program.opts<{
   parallel?: boolean;
 }>();
 
-const repoPath = path.resolve(opts.path);
+const inputPath = path.resolve(opts.path);
 const since = opts.since === 'all' ? undefined : opts.since;
 
 // Validate the repo path up front so we can fail with a clean message instead
 // of a buried git stderr trace from deep inside the analyzer stack.
-if (!existsSync(repoPath)) {
-  process.stderr.write(`Error: path does not exist: ${repoPath}\n`);
+if (!existsSync(inputPath)) {
+  process.stderr.write(`Error: path does not exist: ${inputPath}\n`);
   process.exit(1);
 }
-if (!existsSync(path.join(repoPath, '.git'))) {
-  process.stderr.write(`Error: not a git repository: ${repoPath}\n`);
+
+// Resolve to the working-tree root so gitrelic can be run from any
+// subdirectory, the way every other git command can. Checking for `.git`
+// directly would only ever match the repo root.
+let resolvedRoot: string | null = null;
+try {
+  resolvedRoot = await resolveRepoRoot(inputPath);
+} catch (err) {
+  // Thrown only when git itself is missing. Reporting that as "not a git
+  // repository" would send the user to debug the one thing that isn't wrong.
+  process.stderr.write(`Error: ${(err as Error).message}\n`);
   process.exit(1);
+}
+if (!resolvedRoot) {
+  process.stderr.write(
+    `Error: not a git repository: ${inputPath}\n` +
+      'Run gitrelic from inside a git repository, or point it at one with --path <repo>.\n',
+  );
+  process.exit(1);
+}
+// Re-bound so the non-null type reaches the React callbacks below — control-flow
+// narrowing from the process.exit() guard doesn't survive into those closures.
+const repoPath: string = resolvedRoot;
+
+// Analysis is always whole-repo, so a subdirectory silently becomes something
+// broader than what was asked for. Say so. stderr specifically: stdout has to
+// stay parseable in --json mode.
+if (repoPath !== inputPath) {
+  process.stderr.write(`Analyzing repository root: ${repoPath}\n`);
 }
 
 if (opts.json) {

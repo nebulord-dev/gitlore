@@ -1,6 +1,32 @@
-import { describe, it, expect } from 'vitest';
+import { mkdtemp, realpath, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 
-import { parseGitLog, isIgnored } from './git.js';
+import { parseGitLog, isIgnored, resolveRepoRoot } from './git.js';
+
+const thisDir = path.dirname(fileURLToPath(import.meta.url));
+
+/**
+ * Creates an empty directory that git is forbidden from escaping, so
+ * "not a repo" assertions can't be broken by an ancestor checkout — a real risk
+ * on Windows (tmpdir lives under the user profile) and with TMPDIR overrides or
+ * container CI mounts.
+ *
+ * Two subtleties, both verified against real git rather than assumed:
+ * - The ceiling must be the *parent*. Setting it to the directory itself does
+ *   not stop the upward search — git still walks past it and finds an ancestor
+ *   repo, which would make these assertions pass vacuously.
+ * - realpath matters: GIT_CEILING_DIRECTORIES entries are matched literally and
+ *   are not resolved through symlinks, and macOS /tmp is a symlink to
+ *   /private/tmp.
+ */
+async function makeSealedDir(): Promise<string> {
+  const dir = await mkdtemp(path.join(await realpath(tmpdir()), 'gitrelic-'));
+  vi.stubEnv('GIT_CEILING_DIRECTORIES', path.dirname(dir));
+  return dir;
+}
 
 describe('parseGitLog', () => {
   it('parses a single commit with numstat', () => {
@@ -151,5 +177,60 @@ describe('isIgnored', () => {
     expect(isIgnored('package.json')).toBe(false);
     expect(isIgnored('README.md')).toBe(false);
     expect(isIgnored('tsconfig.json')).toBe(false);
+  });
+});
+
+describe('resolveRepoRoot', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('resolves the repo root from a nested subdirectory', async () => {
+    // This test file lives several levels deep inside the gitrelic repo, so a
+    // correct implementation walks up to the same root a bare `git` command
+    // would. The single-level `.git` existsSync check this replaced returned
+    // null here.
+    const fromNested = await resolveRepoRoot(thisDir);
+    expect(fromNested).not.toBeNull();
+    expect(thisDir.startsWith(fromNested as string)).toBe(true);
+  });
+
+  it('is stable regardless of where inside the repo it starts', async () => {
+    const fromNested = await resolveRepoRoot(thisDir);
+    const fromRoot = await resolveRepoRoot(fromNested as string);
+    expect(fromRoot).toBe(fromNested);
+  });
+
+  it('returns null outside a git repository', async () => {
+    const dir = await makeSealedDir();
+    try {
+      expect(await resolveRepoRoot(dir)).toBeNull();
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('honours a ceiling that blocks the repo root', async () => {
+    // Guards the test above from silently going vacuous. thisDir is definitely
+    // inside a working tree, so this can only pass if the ceiling genuinely
+    // stops the search — if sealing ever breaks, this fails instead of the
+    // tmpdir assertion quietly passing for the wrong reason. No I/O needed.
+    vi.stubEnv('GIT_CEILING_DIRECTORIES', path.dirname(thisDir));
+    expect(await resolveRepoRoot(thisDir)).toBeNull();
+  });
+
+  it('returns null for a path that does not exist', async () => {
+    // Spawning with a missing cwd also raises ENOENT, so this guards against
+    // that being mistaken for a missing git binary.
+    const missing = path.join(tmpdir(), 'gitrelic-does-not-exist-1a2b3c');
+    expect(await resolveRepoRoot(missing)).toBeNull();
+  });
+
+  it('throws instead of reporting "not a repository" when git is missing', async () => {
+    // An empty PATH makes the git lookup fail with ENOENT while startPath still
+    // exists — telling a user their repo isn't a repo would send them to debug
+    // the one thing that was never wrong.
+    vi.stubEnv('PATH', '');
+    await expect(resolveRepoRoot(thisDir)).rejects.toThrow(/not found on PATH/);
   });
 });
