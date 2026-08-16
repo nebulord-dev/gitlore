@@ -65,7 +65,15 @@ if (!existsSync(inputPath)) {
 // Resolve to the working-tree root so gitrelic can be run from any
 // subdirectory, the way every other git command can. Checking for `.git`
 // directly would only ever match the repo root.
-const resolvedRoot = await resolveRepoRoot(inputPath);
+let resolvedRoot: string | null = null;
+try {
+  resolvedRoot = await resolveRepoRoot(inputPath);
+} catch (err) {
+  // Thrown only when git itself is missing. Reporting that as "not a git
+  // repository" would send the user to debug the one thing that isn't wrong.
+  process.stderr.write(`Error: ${(err as Error).message}\n`);
+  process.exit(1);
+}
 if (!resolvedRoot) {
   process.stderr.write(
     `Error: not a git repository: ${inputPath}\n` +

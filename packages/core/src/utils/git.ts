@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs';
+import path from 'node:path';
 import { execa } from 'execa';
 
 // ─── Raw git primitives ────────────────────────────────────────────────────────
@@ -182,9 +184,6 @@ export async function getTrackedFiles(repoPath: string): Promise<string[]> {
 }
 
 /**
- * Returns the current branch name.
- */
-/**
  * Resolves the root of the working tree containing `startPath`, the same way a
  * bare `git` command does — so gitrelic can be invoked from any subdirectory
  * rather than only from the repo root.
@@ -194,8 +193,11 @@ export async function getTrackedFiles(repoPath: string): Promise<string[]> {
  * `GIT_CEILING_DIRECTORIES` right for free.
  *
  * @param startPath - Any path inside the repository.
- * @returns The absolute path to the working-tree root, or null if `startPath`
- *   is not inside a git repository, does not exist, or git is unavailable.
+ * @returns The absolute path to the working-tree root, normalized to native
+ *   separators, or null if `startPath` is not inside a git working tree (which
+ *   includes bare repos) or does not exist.
+ * @throws If the git binary is not on PATH — callers must not report that as
+ *   "not a git repository", which would send the user to fix the wrong thing.
  */
 export async function resolveRepoRoot(
   startPath: string,
@@ -204,12 +206,26 @@ export async function resolveRepoRoot(
     const { stdout } = await execa('git', ['rev-parse', '--show-toplevel'], {
       cwd: startPath,
     });
-    return stdout.trim() || null;
-  } catch {
+    // `--show-toplevel` always emits forward slashes, even on Windows. Normalize
+    // so `repoPath` keeps the native separators the old path.resolve() produced,
+    // since it gets serialized into the report the dashboard renders.
+    return stdout.trim() ? path.normalize(stdout.trim()) : null;
+  } catch (err) {
+    // ENOENT covers two very different causes: a missing git binary, and a cwd
+    // that does not exist. Only the former is worth surfacing — if startPath
+    // itself is gone, null is the honest answer.
+    if ((err as { code?: string }).code === 'ENOENT' && existsSync(startPath)) {
+      throw new Error(
+        'git was not found on PATH — gitrelic requires git to be installed.',
+      );
+    }
     return null;
   }
 }
 
+/**
+ * Returns the current branch name.
+ */
 export async function getCurrentBranch(repoPath: string): Promise<string> {
   try {
     const { stdout } = await execa('git', ['branch', '--show-current'], {
