@@ -1,6 +1,11 @@
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, it, expect } from 'vitest';
 
-import { parseGitLog, isIgnored } from './git.js';
+import { parseGitLog, isIgnored, resolveRepoRoot } from './git.js';
+
+const thisDir = path.dirname(fileURLToPath(import.meta.url));
 
 describe('parseGitLog', () => {
   it('parses a single commit with numstat', () => {
@@ -151,5 +156,33 @@ describe('isIgnored', () => {
     expect(isIgnored('package.json')).toBe(false);
     expect(isIgnored('README.md')).toBe(false);
     expect(isIgnored('tsconfig.json')).toBe(false);
+  });
+});
+
+describe('resolveRepoRoot', () => {
+  it('resolves the repo root from a nested subdirectory', async () => {
+    // This test file lives several levels deep inside the gitrelic repo, so a
+    // correct implementation walks up to the same root a bare `git` command
+    // would. The single-level `.git` existsSync check this replaced returned
+    // null here.
+    const fromNested = await resolveRepoRoot(thisDir);
+    expect(fromNested).not.toBeNull();
+    expect(thisDir.startsWith(fromNested as string)).toBe(true);
+  });
+
+  it('is stable regardless of where inside the repo it starts', async () => {
+    const fromNested = await resolveRepoRoot(thisDir);
+    const fromRoot = await resolveRepoRoot(fromNested as string);
+    expect(fromRoot).toBe(fromNested);
+  });
+
+  it('returns null outside a git repository', async () => {
+    // tmpdir() is never inside a working tree on any supported platform.
+    expect(await resolveRepoRoot(tmpdir())).toBeNull();
+  });
+
+  it('returns null for a path that does not exist', async () => {
+    const missing = path.join(tmpdir(), 'gitrelic-does-not-exist-1a2b3c');
+    expect(await resolveRepoRoot(missing)).toBeNull();
   });
 });

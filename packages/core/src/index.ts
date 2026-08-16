@@ -1,6 +1,7 @@
 export { runGitrelic } from './runner.js';
 export { analyzeParallelDev } from './analyzers/parallel-dev.js';
 export { analyzeHotspotClustering } from './analyzers/hotspot-clustering.js';
+export { resolveRepoRoot } from './utils/git.js';
 export type { CoAuthor, FileStats, RawCommit } from './utils/git.js';
 export {
   classifyAuthor,

@@ -184,6 +184,32 @@ export async function getTrackedFiles(repoPath: string): Promise<string[]> {
 /**
  * Returns the current branch name.
  */
+/**
+ * Resolves the root of the working tree containing `startPath`, the same way a
+ * bare `git` command does — so gitrelic can be invoked from any subdirectory
+ * rather than only from the repo root.
+ *
+ * Delegating to `git rev-parse` rather than walking up looking for `.git` also
+ * gets worktrees, submodules (where `.git` is a file, not a directory) and
+ * `GIT_CEILING_DIRECTORIES` right for free.
+ *
+ * @param startPath - Any path inside the repository.
+ * @returns The absolute path to the working-tree root, or null if `startPath`
+ *   is not inside a git repository, does not exist, or git is unavailable.
+ */
+export async function resolveRepoRoot(
+  startPath: string,
+): Promise<string | null> {
+  try {
+    const { stdout } = await execa('git', ['rev-parse', '--show-toplevel'], {
+      cwd: startPath,
+    });
+    return stdout.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
 export async function getCurrentBranch(repoPath: string): Promise<string> {
   try {
     const { stdout } = await execa('git', ['branch', '--show-current'], {
