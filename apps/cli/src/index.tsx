@@ -100,7 +100,14 @@ if (opts.json) {
       branch: opts.branch,
       since,
     });
-    process.stdout.write(JSON.stringify(report, null, 2));
+    // process.exit() discards whatever is still queued in Node's userspace
+    // write buffer. On a TTY stdout is synchronous so that never shows, but on
+    // a pipe — the whole point of --json — writes are async, and exiting
+    // immediately truncated the report at the pipe capacity (64KB) while still
+    // reporting success. Wait for the flush before exiting.
+    await new Promise<void>((resolve) => {
+      process.stdout.write(JSON.stringify(report, null, 2), () => resolve());
+    });
     process.exit(0);
   } catch (err) {
     process.stderr.write(`Error: ${(err as Error).message}\n`);
