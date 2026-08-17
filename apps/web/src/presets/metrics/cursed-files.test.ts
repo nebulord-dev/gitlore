@@ -16,8 +16,10 @@ function makeFile(overrides: Partial<CursedFile> = {}): CursedFile {
   };
 }
 
-function makeReport(cursedFiles: CursedFile[]): GitrelicReport {
-  return { cursedFiles } as unknown as GitrelicReport;
+function makeReport(files: CursedFile[]): GitrelicReport {
+  return {
+    cursedFiles: { files, excludedBotFiles: [], summary: '' },
+  } as unknown as GitrelicReport;
 }
 
 describe('cursedFilesMetrics', () => {

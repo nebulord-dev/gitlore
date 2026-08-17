@@ -163,8 +163,19 @@ export const PRESETS: Record<PresetId, PresetDefinition> = {
     label: 'Cursed Files',
     group: 'code-health',
     hero: {
-      defaultViz: 'treemap',
-      altTabs: ['treemap', 'risk-heatmap', 'scatter'],
+      // `treemap` (ChurnTreemap) is stripped per the RELIC-333 firehose rule: it
+      // renders every file in the repo by churn. It still lives in Churn /
+      // Overview, where it answers the right question.
+      //
+      // Caveat, deliberately recorded rather than papered over: RiskHeatmap does
+      // not read `report.cursedFiles` either, and is also the `risk` preset's
+      // default. It is a closer proxy — it composes the same ownership, blast
+      // radius and shame inputs that feed curseScore — but this preset still has
+      // no curse-score-native hero. Tracked at RELIC-343, which is blocked on
+      // core emitting per-reason point attribution; `CursedFile.reasons` is a
+      // bare string[] today, so nothing downstream can attribute score to cause.
+      defaultViz: 'risk-heatmap',
+      altTabs: ['risk-heatmap', 'scatter'],
     },
     bottomPanel: {
       defaultTab: 'cursed-files',

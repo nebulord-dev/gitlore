@@ -3,7 +3,7 @@ import type { Metric } from '../types';
 import type { GitrelicReport } from '@gitrelic/core';
 
 export function cursedFilesMetrics(report: GitrelicReport): Metric[] {
-  const cursed = report.cursedFiles;
+  const cursed = report.cursedFiles.files;
   const cursedCount = cursed.length;
   const topScore = cursed.reduce(
     (max, c) => (c.curseScore > max ? c.curseScore : max),

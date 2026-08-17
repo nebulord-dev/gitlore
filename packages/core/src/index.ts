@@ -25,6 +25,7 @@ export type {
   ContributorReport,
   Contributor,
   CursedFile,
+  CursedFilesReport,
   RepoMeta,
   ForensicsReport,
   FileForensics,

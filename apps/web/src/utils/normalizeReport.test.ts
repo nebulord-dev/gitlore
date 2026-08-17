@@ -200,4 +200,60 @@ describe('normalizeReport', () => {
     expect(result.coAuthors.byMonth).toEqual([]);
     expect(result.coAuthors.perAuthorMix).toEqual([]);
   });
+
+  // cursedFiles changed from CursedFile[] to CursedFilesReport in RELIC-307.
+  // This lift is the entire backward-compat story for every report written
+  // before that, so both directions are pinned here.
+  it('lifts a pre-RELIC-307 cursedFiles array into a report object', () => {
+    const raw = {
+      cursedFiles: [
+        {
+          file: 'a.ts',
+          curseScore: 80,
+          reasons: ['Modified in 40% of all commits'],
+          churn: 12,
+          authors: 1,
+          ageDays: 30,
+          narrative: 'a.ts is a problem.',
+        },
+      ],
+    };
+
+    const out = normalizeReport(raw as any);
+    expect(out.cursedFiles.files).toHaveLength(1);
+    expect(out.cursedFiles.files[0].file).toBe('a.ts');
+    // Old reports predate bot filtering, so nothing was withheld when written.
+    expect(out.cursedFiles.excludedBotFiles).toEqual([]);
+  });
+
+  it('preserves a fresh cursedFiles report object', () => {
+    const raw = {
+      cursedFiles: {
+        files: [
+          {
+            file: 'b.ts',
+            curseScore: 60,
+            reasons: [],
+            churn: 5,
+            authors: 2,
+            ageDays: 10,
+            narrative: '',
+          },
+        ],
+        excludedBotFiles: ['CHANGELOG.md'],
+        summary: '1 cursed file. 1 file withheld as machine-generated churn.',
+      },
+    };
+
+    const out = normalizeReport(raw as any);
+    expect(out.cursedFiles.files).toHaveLength(1);
+    expect(out.cursedFiles.excludedBotFiles).toEqual(['CHANGELOG.md']);
+    expect(out.cursedFiles.summary).toContain('withheld');
+  });
+
+  it('defaults cursedFiles entirely when the field is missing', () => {
+    const out = normalizeReport({} as any);
+    expect(out.cursedFiles.files).toEqual([]);
+    expect(out.cursedFiles.excludedBotFiles).toEqual([]);
+  });
 });

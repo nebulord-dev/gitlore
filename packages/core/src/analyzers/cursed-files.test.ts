@@ -8,6 +8,7 @@ import type {
   ForensicsReport,
   ParallelDevReport,
 } from '../types.js';
+import type { RawCommit } from '../utils/git.js';
 
 function makeChurnReport(
   files: { file: string; commitCount: number; churnScore: number }[],
@@ -70,16 +71,56 @@ function makeAgeMapReport(
     staleFiles: [],
     ancientFiles: [],
     medianAgeDays: 0,
+    thresholds: { freshLimit: 30, agingLimit: 90, staleLimit: 180 },
     summary: '',
   };
 }
 
 function makeEmptyForensics(): ForensicsReport {
-  return { files: [], shameLeaderboard: [], totalShameCommits: 0, summary: '' };
+  return {
+    files: [],
+    shameLeaderboard: [],
+    totalShameCommits: 0,
+    keywordTiers: { critical: 0, moderate: 0, mild: 0 },
+    byMonth: [],
+    summary: '',
+  };
 }
 
 function makeEmptyParallelDev(): ParallelDevReport {
-  return { files: [], hotFiles: [], totalParallelFiles: 0, summary: '' };
+  return {
+    files: [],
+    hotFiles: [],
+    totalParallelFiles: 0,
+    highParallel: 0,
+    tierMix: { low: 0, medium: 0, high: 0, critical: 0 },
+    byMonth: [],
+    summary: '',
+  };
+}
+
+/**
+ * Synthetic commit history. `findCursedFiles` only reads authorEmail, date and
+ * files, so the rest stays minimal. `authorEmail` drives bot attribution and
+ * `daysAgo` drives how idle the repository looks.
+ */
+function makeCommits(
+  count: number,
+  opts: { files?: string[]; authorEmail?: string; daysAgo?: number } = {},
+): RawCommit[] {
+  const { files = [], authorEmail = 'alice@example.com', daysAgo = 0 } = opts;
+  return Array.from({ length: count }, (_, i) => ({
+    hash: `c${i}`,
+    authorEmail,
+    authorName: authorEmail.split('@')[0],
+    date: new Date(Date.now() - daysAgo * 86_400_000).toISOString(),
+    message: 'chore: change',
+    coAuthors: [],
+    files,
+    fileStats: [],
+    insertions: 1,
+    deletions: 0,
+  }));
 }
 
 describe('findCursedFiles', () => {
@@ -104,10 +145,10 @@ describe('findCursedFiles', () => {
       age,
       makeEmptyForensics(),
       makeEmptyParallelDev(),
-      20,
+      makeCommits(20),
     );
-    expect(result.length).toBe(1);
-    expect(result[0].curseScore).toBe(50);
+    expect(result.files.length).toBe(1);
+    expect(result.files[0].curseScore).toBe(50);
   });
 
   it('excludes files below threshold 50', () => {
@@ -131,9 +172,9 @@ describe('findCursedFiles', () => {
       age,
       makeEmptyForensics(),
       makeEmptyParallelDev(),
-      20,
+      makeCommits(20),
     );
-    expect(result.length).toBe(0);
+    expect(result.files.length).toBe(0);
   });
 
   it('requires multiple strong signals', () => {
@@ -157,9 +198,9 @@ describe('findCursedFiles', () => {
       age,
       makeEmptyForensics(),
       makeEmptyParallelDev(),
-      20,
+      makeCommits(20),
     );
-    expect(result.length).toBe(0);
+    expect(result.files.length).toBe(0);
   });
 
   it('combines hot churn (35) + critical bus factor (30) = 65', () => {
@@ -182,9 +223,9 @@ describe('findCursedFiles', () => {
       age,
       makeEmptyForensics(),
       makeEmptyParallelDev(),
-      20,
+      makeCommits(20),
     );
-    expect(result[0].curseScore).toBe(65);
+    expect(result.files[0].curseScore).toBe(65);
   });
 
   it('caps score at 100', () => {
@@ -209,10 +250,10 @@ describe('findCursedFiles', () => {
       age,
       makeEmptyForensics(),
       makeEmptyParallelDev(),
-      50,
+      makeCommits(50),
     );
     // 35 + 30 + 10 = 75, capped at 100 (doesn't exceed here, but test the cap mechanism)
-    expect(result[0].curseScore).toBeLessThanOrEqual(100);
+    expect(result.files[0].curseScore).toBeLessThanOrEqual(100);
   });
 
   it('sorts by curseScore descending', () => {
@@ -245,10 +286,12 @@ describe('findCursedFiles', () => {
       age,
       makeEmptyForensics(),
       makeEmptyParallelDev(),
-      30,
+      makeCommits(30),
     );
-    expect(result[0].file).toBe('high.ts');
-    expect(result[0].curseScore).toBeGreaterThan(result[1].curseScore);
+    expect(result.files[0].file).toBe('high.ts');
+    expect(result.files[0].curseScore).toBeGreaterThan(
+      result.files[1].curseScore,
+    );
   });
 
   it('includes reasons for each signal', () => {
@@ -271,14 +314,14 @@ describe('findCursedFiles', () => {
       age,
       makeEmptyForensics(),
       makeEmptyParallelDev(),
-      20,
+      makeCommits(20),
     );
-    expect(result[0].reasons.length).toBeGreaterThanOrEqual(2);
+    expect(result.files[0].reasons.length).toBeGreaterThanOrEqual(2);
     expect(
-      result[0].reasons.some((r) => r.toLowerCase().includes('commit')),
+      result.files[0].reasons.some((r) => r.toLowerCase().includes('commit')),
     ).toBe(true);
     expect(
-      result[0].reasons.some((r) => r.toLowerCase().includes('author')),
+      result.files[0].reasons.some((r) => r.toLowerCase().includes('author')),
     ).toBe(true);
   });
 
@@ -308,9 +351,9 @@ describe('findCursedFiles', () => {
       age,
       makeEmptyForensics(),
       makeEmptyParallelDev(),
-      20,
+      makeCommits(20),
     );
-    expect(result.length).toBe(0);
+    expect(result.files.length).toBe(0);
   });
 
   it('drops shame-only files with no churn data', () => {
@@ -336,6 +379,8 @@ describe('findCursedFiles', () => {
         },
       ],
       totalShameCommits: 3,
+      keywordTiers: { critical: 0, moderate: 0, mild: 0 },
+      byMonth: [],
       summary: '',
     };
 
@@ -350,9 +395,11 @@ describe('findCursedFiles', () => {
       ageMap,
       forensics,
       makeEmptyParallelDev(),
-      100,
+      makeCommits(100),
     );
-    expect(result.find((f) => f.file === 'shame-only.ts')).toBeUndefined();
+    expect(
+      result.files.find((f) => f.file === 'shame-only.ts'),
+    ).toBeUndefined();
   });
 
   it('adds shame reason for files with shameScore >= 75', () => {
@@ -379,6 +426,8 @@ describe('findCursedFiles', () => {
         },
       ],
       totalShameCommits: 5,
+      keywordTiers: { critical: 0, moderate: 0, mild: 0 },
+      byMonth: [],
       summary: '',
     };
 
@@ -400,9 +449,9 @@ describe('findCursedFiles', () => {
       ageMap,
       forensics,
       makeEmptyParallelDev(),
-      100,
+      makeCommits(100),
     );
-    const auth = result.find((f) => f.file === 'src/auth.ts');
+    const auth = result.files.find((f) => f.file === 'src/auth.ts');
     expect(auth).toBeDefined();
     expect(auth!.reasons.some((r) => r.includes('revert'))).toBe(true);
   });
@@ -449,6 +498,9 @@ describe('findCursedFiles', () => {
         },
       ],
       totalParallelFiles: 1,
+      highParallel: 0,
+      tierMix: { low: 0, medium: 0, high: 0, critical: 0 },
+      byMonth: [],
       summary: '',
     };
 
@@ -458,12 +510,12 @@ describe('findCursedFiles', () => {
       age,
       makeEmptyForensics(),
       parallelDev,
-      20,
+      makeCommits(20),
     );
-    expect(result.length).toBe(1);
-    expect(result[0].curseScore).toBe(55); // 35 churn + 20 parallel
+    expect(result.files.length).toBe(1);
+    expect(result.files[0].curseScore).toBe(55); // 35 churn + 20 parallel
     expect(
-      result[0].reasons.some((r) => r.includes('parallel development')),
+      result.files[0].reasons.some((r) => r.includes('parallel development')),
     ).toBe(true);
   });
 
@@ -527,6 +579,9 @@ describe('findCursedFiles', () => {
         },
       ],
       totalParallelFiles: 1,
+      highParallel: 0,
+      tierMix: { low: 0, medium: 0, high: 0, critical: 0 },
+      byMonth: [],
       summary: '',
     };
 
@@ -536,9 +591,139 @@ describe('findCursedFiles', () => {
       age,
       makeEmptyForensics(),
       parallelDev,
-      20,
+      makeCommits(20),
     );
     // 35 (churn) + 30 (critical bus) + 20 (parallel) = 85
-    expect(result.find((f) => f.file === 'parallel-only.ts')).toBeDefined();
+    expect(
+      result.files.find((f) => f.file === 'parallel-only.ts'),
+    ).toBeDefined();
+  });
+
+  describe('bot-driven churn', () => {
+    // 35 (churn > 75) + 15 (high bus factor) = 50, the qualifying floor.
+    const cursedCandidate = () => ({
+      churn: makeChurnReport([
+        { file: 'CHANGELOG.md', commitCount: 20, churnScore: 80 },
+      ]),
+      bus: makeBusFactorReport([
+        {
+          file: 'CHANGELOG.md',
+          risk: 'high' as const,
+          dominantAuthorPercent: 80,
+          uniqueAuthors: 2,
+        },
+      ]),
+      age: makeAgeMapReport([{ file: 'CHANGELOG.md', ageInDays: 5 }]),
+    });
+
+    it('withholds files whose churn is mostly automated', () => {
+      const { churn, bus, age } = cursedCandidate();
+      const result = findCursedFiles(
+        churn,
+        bus,
+        age,
+        makeEmptyForensics(),
+        makeEmptyParallelDev(),
+        // The real pattern behind this: semantic-release rewrites CHANGELOG.md
+        // on every release, which made it the top "cursed" file in gitrelic's
+        // own report despite no human ever editing it.
+        makeCommits(20, {
+          files: ['CHANGELOG.md'],
+          authorEmail: 'semantic-release-bot@martynus.net',
+        }),
+      );
+
+      expect(result.files).toHaveLength(0);
+      expect(result.excludedBotFiles).toEqual(['CHANGELOG.md']);
+      expect(result.summary).toContain('withheld');
+    });
+
+    it('keeps the same file when humans drive the churn', () => {
+      const { churn, bus, age } = cursedCandidate();
+      const result = findCursedFiles(
+        churn,
+        bus,
+        age,
+        makeEmptyForensics(),
+        makeEmptyParallelDev(),
+        makeCommits(20, { files: ['CHANGELOG.md'] }),
+      );
+
+      expect(result.files.map((f) => f.file)).toEqual(['CHANGELOG.md']);
+      expect(result.excludedBotFiles).toEqual([]);
+    });
+
+    it('keeps files where bots are only a minority of the churn', () => {
+      const { churn, bus, age } = cursedCandidate();
+      const result = findCursedFiles(
+        churn,
+        bus,
+        age,
+        makeEmptyForensics(),
+        makeEmptyParallelDev(),
+        [
+          ...makeCommits(9, {
+            files: ['CHANGELOG.md'],
+            authorEmail: 'dependabot[bot]@users.noreply.github.com',
+          }),
+          ...makeCommits(11, { files: ['CHANGELOG.md'] }),
+        ],
+      );
+
+      expect(result.files).toHaveLength(1);
+      expect(result.excludedBotFiles).toEqual([]);
+    });
+  });
+
+  describe('abandoned hot files', () => {
+    const abandoned = () => ({
+      churn: makeChurnReport([
+        { file: 'a.ts', commitCount: 10, churnScore: 80 },
+      ]),
+      bus: makeBusFactorReport([
+        {
+          file: 'a.ts',
+          risk: 'high' as const,
+          dominantAuthorPercent: 80,
+          uniqueAuthors: 2,
+        },
+      ]),
+      age: makeAgeMapReport([{ file: 'a.ts', ageInDays: 337 }]),
+    });
+
+    it('flags a file abandoned long before the repo went quiet', () => {
+      const { churn, bus, age } = abandoned();
+      const result = findCursedFiles(
+        churn,
+        bus,
+        age,
+        makeEmptyForensics(),
+        makeEmptyParallelDev(),
+        makeCommits(10, { files: ['other.ts'], daysAgo: 0 }),
+      );
+
+      expect(
+        result.files[0].reasons.some((r) => r.startsWith('Heavily churned')),
+      ).toBe(true);
+    });
+
+    it('does not flag files in a repo that is simply dormant', () => {
+      // Every file in an 11-month-dormant repo is 11 months old. An absolute
+      // age threshold marks all of them, and the old copy claimed they were
+      // "still actively changing" — the opposite of the truth.
+      const { churn, bus, age } = abandoned();
+      const result = findCursedFiles(
+        churn,
+        bus,
+        age,
+        makeEmptyForensics(),
+        makeEmptyParallelDev(),
+        makeCommits(10, { files: ['a.ts'], daysAgo: 337 }),
+      );
+
+      expect(
+        result.files[0].reasons.some((r) => r.startsWith('Heavily churned')),
+      ).toBe(false);
+    });
   });
 });

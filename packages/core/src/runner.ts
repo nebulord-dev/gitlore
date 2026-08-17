@@ -42,7 +42,7 @@ import type {
   ComplexityTrendReport,
   ContributorReport,
   CouplingReport,
-  CursedFile,
+  CursedFilesReport,
   DeadCodeReport,
   ForensicsReport,
   GhostFilesReport,
@@ -229,7 +229,11 @@ const EMPTY_RENAME_TRACKING: RenameTrackingReport = {
   filesWithRenames: 0,
   summary: 'unavailable',
 };
-const EMPTY_CURSED_FILES: CursedFile[] = [];
+const EMPTY_CURSED_FILES: CursedFilesReport = {
+  files: [],
+  excludedBotFiles: [],
+  summary: '',
+};
 
 /**
  * Runs the GitRelic analysis on a given git repository and returns a comprehensive report.
@@ -450,7 +454,7 @@ export async function runGitrelic(
         ageMap,
         forensics,
         parallelDev,
-        commits.length,
+        commits,
       ),
     EMPTY_CURSED_FILES,
   );

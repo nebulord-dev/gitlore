@@ -68,7 +68,7 @@ function getFileData(file: string, report: GitrelicReport): InspectorRow[] {
     });
   }
 
-  const cursed = report.cursedFiles.find((f) => f.file === file);
+  const cursed = report.cursedFiles.files.find((f) => f.file === file);
   if (cursed) {
     rows.push({
       label: 'Curse Score',
