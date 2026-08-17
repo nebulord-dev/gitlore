@@ -1,3 +1,10 @@
+## [0.47.2](https://github.com/nebulord-dev/gitrelic/compare/v0.47.1...v0.47.2) (2026-08-17)
+
+
+### Bug Fixes
+
+* **cli:** flush stdout before exiting so --json is not truncated ([#83](https://github.com/nebulord-dev/gitrelic/issues/83)) ([e5ad3f8](https://github.com/nebulord-dev/gitrelic/commit/e5ad3f8957a1a246c6cc26af3b715ce3bd6d8fd6))
+
 ## [0.47.1](https://github.com/nebulord-dev/gitrelic/compare/v0.47.0...v0.47.1) (2026-08-16)
 
 
