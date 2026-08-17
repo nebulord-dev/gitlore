@@ -1,4 +1,4 @@
-import { isBotEmail } from '../utils/authorClassification.js';
+import { classifyAuthor } from '../utils/authorClassification.js';
 import type {
   ChurnReport,
   BusFactorReport,
@@ -30,16 +30,21 @@ const MS_PER_DAY = 86_400_000;
  * Files with no commits in the window are absent rather than zero.
  */
 /**
- * Deliberately keys on `isBotEmail` only. AI-authored commits classify as `ai`,
- * not `bot`, and count as human churn here — a person prompted them and owns
- * the result, so the ownership signal still holds. Only unattended automation
- * (release bots, dependency bots) is machine churn for this purpose.
+ * AI-authored commits count as human churn here — a person prompted them and
+ * owns the result, so the ownership signal still holds. Only unattended
+ * automation (release bots, dependency bots) is machine churn.
+ *
+ * This must use `classifyAuthor`, not `isBotEmail`. Only `classifyAuthor`
+ * checks AI patterns first; `isBotEmail`'s catch-all for `[bot]@…noreply.
+ * github.com` otherwise swallows `copilot[bot]@…` and every Devin commit,
+ * whose only address form is `devin-ai-integration[bot]@…` — silently
+ * withholding AI-authored files as machine churn, the opposite of the intent.
  */
 function botChurnShareByFile(commits: RawCommit[]): Map<string, number> {
   const tally = new Map<string, { bot: number; total: number }>();
 
   for (const commit of commits) {
-    const bot = isBotEmail(commit.authorEmail);
+    const bot = classifyAuthor(commit.authorEmail) === 'bot';
     for (const file of commit.files) {
       const entry = tally.get(file) ?? { bot: 0, total: 0 };
       entry.total += 1;

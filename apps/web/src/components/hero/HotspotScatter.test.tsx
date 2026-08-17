@@ -91,8 +91,9 @@ describe('HotspotScatter rendering', () => {
 
   it('renders a caption explaining the axes', () => {
     // This hero shipped without one while 20 others had it, so an alt-tab
-    // reader got an unlabelled scatter. It is the default hero for `hotspots`
-    // and an alt for cursed-files, age-map and risk, so the gap was wide.
+    // reader got an unlabelled scatter. `scatter` is the default hero for
+    // `hotspots` and an alt for overview, cursed-files and dead-code, so the
+    // gap spanned four presets.
     render(
       <HotspotScatter
         report={makeReport()}

@@ -21,7 +21,7 @@ Because it is an intersection rather than a ranking, **a healthy repository legi
 
 If you only have ten seconds:
 
-- **Top of the screen** (`Risk` hero, default tab) — composite risk heatmap across the repo's directories.
+- **Top of the screen** (`Risk` hero, default tab) — composite risk heatmap of the repository's riskiest files.
 - **Bottom panel** (table) — one row per cursed file, with **reason chips** explaining *why* it scored, plus curse score, churn, and author count. Click a row to expand its narrative; click through to the Inspector for the full per-file profile.
 - **Withheld notice** — if any files were excluded as machine-generated churn, they are named above the table. See [Bot-generated churn](#bot-generated-churn-is-withheld).
 - **Right-side Inspector** — per-file detail across every contributing analyzer.
@@ -82,16 +82,17 @@ This exists because it was the analyzer's single largest source of false signal.
 
 - The threshold is a **simple majority** of a file's commits. Below that, a real person still drives most of the changes.
 - Detection reuses the shared classifier, which recognises `semantic-release`, `dependabot`, `renovate`, `github-actions`, and `[bot]` accounts on GitHub's noreply domain.
-- **AI-authored commits count as human churn**, deliberately. Claude, Copilot, Aider, Cursor and Devin commits classify as `ai`, not `bot` — a person prompted them and owns the result, so the ownership signal still holds. Only unattended automation is machine churn.
+- **AI-authored commits count as human churn**, deliberately — a person prompted them and owns the result, so the ownership signal still holds. Only unattended automation is machine churn.
+  - This depends on classification *order*, which is easy to get wrong. Copilot and Devin address as `copilot[bot]@users.noreply.github.com` and `devin-ai-integration[bot]@users.noreply.github.com`, both of which the generic `[bot]@…noreply.github.com` bot rule also matches. The analyzer checks AI patterns first, so they resolve to `ai` and survive the filter. Devin has no non-`[bot]` address form at all, so every Devin commit depends on that ordering.
 - Withheld files are **named, not hidden.** An empty panel that explains itself beats one that looks broken.
 
 ## Reading the surfaces
 
-Every hero carries a **caption strip** along its bottom edge describing what the chart encodes. If you're ever unsure what you're looking at, read that first — it names the axes, the colour scale and the unit.
+Both heroes on this analyzer carry a **caption strip** along the bottom edge describing what the chart encodes. If you're ever unsure what you're looking at, read that first — it names the axes, the colour scale and the unit. (Most, though not yet all, heroes elsewhere in the dashboard have one.)
 
 ### The hero — `Risk` (default tab)
 
-A composite risk heatmap over the repository's directories, combining ownership, blast radius and shame inputs.
+One row per file, ranked by a composite of ownership, blast radius, shame and ghost risk. File-level, not a directory rollup — the caption below says so, and it is the [Contributors](/analyzers/contributors) ownership bubble that aggregates by directory.
 
 > **Caption:** *Files scoring high across multiple risk axes · churn, blast radius, shame, ghost risk · color = severity tier*
 
@@ -115,7 +116,7 @@ Useful as a sanity check on the composite score: a cursed file sitting in the bo
 
 Cursed Files is one of the few analyzers where the **table earns its space** rather than being replaced by a narrative KPI. The reason chips are the panel's whole value: they are the only place in the dashboard that explains *why* a file scored, and a single-file narrative summary would discard the comparison across files.
 
-Columns are file, reason chips, curse score, churn, and author count. Reason chips are colour-coded by category — ownership, coupling, parallel, and critical (revert/shame/break) — matching the hero's palette.
+Columns are file, reason chips, curse score, churn, and author count. Reason chips are colour-coded by category — ownership, coupling, parallel, critical (revert/shame/break), and **warning**, the fallback that catches everything else. Warning is the most common of the five in practice: both churn chips and the abandonment chip land there.
 
 **Expanding a row** reveals the file's generated narrative, a plain-English sentence such as *"package.json has been touched in 46% of all commits by a single author. That person is a single point of failure."*
 

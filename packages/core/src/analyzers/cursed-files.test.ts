@@ -653,6 +653,31 @@ describe('findCursedFiles', () => {
       expect(result.excludedBotFiles).toEqual([]);
     });
 
+    it.each([
+      ['Copilot', 'copilot[bot]@users.noreply.github.com'],
+      ['Devin', 'devin-ai-integration[bot]@users.noreply.github.com'],
+      ['Claude', 'noreply@anthropic.com'],
+      ['Aider', 'aider@aider.chat'],
+    ])('keeps files whose churn is %s-authored', (_name, email) => {
+      // AI commits are human churn: a person prompted them and owns the result.
+      // Copilot and Devin address as `…[bot]@users.noreply.github.com`, which
+      // isBotEmail's catch-all matches — so this only holds while the analyzer
+      // uses classifyAuthor, which checks AI patterns first. Devin has no
+      // non-[bot] form at all, so every Devin commit depends on that ordering.
+      const { churn, bus, age } = cursedCandidate();
+      const result = findCursedFiles(
+        churn,
+        bus,
+        age,
+        makeEmptyForensics(),
+        makeEmptyParallelDev(),
+        makeCommits(20, { files: ['CHANGELOG.md'], authorEmail: email }),
+      );
+
+      expect(result.files.map((f) => f.file)).toEqual(['CHANGELOG.md']);
+      expect(result.excludedBotFiles).toEqual([]);
+    });
+
     it('keeps files where bots are only a minority of the churn', () => {
       const { churn, bus, age } = cursedCandidate();
       const result = findCursedFiles(
