@@ -84,6 +84,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # The CLI integration tests analyze this repo's own history and assert
+          # the report exceeds one pipe buffer. The default shallow clone would
+          # leave that margin resting on tracked-file count rather than on real
+          # history, so the assertion would stop meaning what it says.
+          fetch-depth: 0
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4

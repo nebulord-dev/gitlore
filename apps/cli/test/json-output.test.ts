@@ -12,8 +12,13 @@ const binary = path.join(cliDir, 'dist', 'index.mjs');
 // than a pipe buffer, which is what makes the truncation assertion meaningful.
 const repoRoot = path.resolve(cliDir, '..', '..');
 
-/** Linux/macOS pipe capacity, and the exact size the report used to truncate to. */
-const PIPE_CAPACITY = 65_536;
+/**
+ * The exact size the report used to truncate to. Used only as a size floor — a
+ * payload above it cannot have fit in a single pipe buffer on any platform, so
+ * nothing here depends on the capacity being the same everywhere (Windows is
+ * far smaller).
+ */
+const TRUNCATION_SIZE = 65_536;
 
 describe('gitrelic --json', () => {
   beforeAll(() => {
@@ -31,34 +36,44 @@ describe('gitrelic --json', () => {
     // execa pipes stdout rather than handing over a TTY, which is the case that
     // was broken: process.exit() discarded Node's queued userspace writes, so
     // output stopped at the pipe capacity while still exiting 0.
+    //
+    // Shape assertions share this one spawn — each spawn costs a full repo
+    // analysis, and they interrogate the same artifact.
     const { stdout, exitCode } = await execa(
       process.execPath,
       [binary, '--json'],
-      {
-        cwd: repoRoot,
-      },
+      { cwd: repoRoot },
     );
 
     expect(exitCode).toBe(0);
-    // Guards the assertion below from passing vacuously: on a repo small enough
-    // to fit in one pipe buffer, the old code produced correct output too.
-    expect(stdout.length).toBeGreaterThan(PIPE_CAPACITY);
+    // Guards everything below from passing vacuously: on a repo small enough to
+    // fit in one pipe buffer, the old code produced correct output too.
+    expect(stdout.length).toBeGreaterThan(TRUNCATION_SIZE);
     expect(() => JSON.parse(stdout)).not.toThrow();
-  });
-
-  it('produces a report with the expected top-level shape', async () => {
-    const { stdout } = await execa(process.execPath, [binary, '--json'], {
-      cwd: repoRoot,
-    });
 
     const report = JSON.parse(stdout);
-    expect(report.repoName).toBe('gitrelic');
+    // basename of the checkout, not a hard-coded 'gitrelic' — runner.ts derives
+    // it that way, so a fork, worktree, or `gh pr checkout` into a differently
+    // named directory would otherwise fail here for no real reason.
+    expect(report.repoName).toBe(path.basename(repoRoot));
     expect(report.meta.totalCommits).toBeGreaterThan(0);
     expect(report.churn).toBeDefined();
     expect(report.busFactors).toBeDefined();
     // `commits` is serialized last, so asserting it doubles as a completeness
     // check on the tail of the document — the part truncation destroys first.
     expect(Array.isArray(report.commits)).toBe(true);
+  });
+
+  it('exits cleanly when the consumer closes the pipe early', async () => {
+    // `| head` is ordinary usage. Awaiting the flush made stdout's 'error' event
+    // reachable, and with no listener an EPIPE became an uncaught exception.
+    const result = await execa(
+      `"${process.execPath}" "${binary}" --json | head -c 100`,
+      { shell: true, cwd: repoRoot, reject: false },
+    );
+
+    expect(result.stderr).not.toContain('EPIPE');
+    expect(result.stderr).not.toContain('Unhandled');
   });
 
   it('keeps stdout parseable when analyzing from a subdirectory', async () => {

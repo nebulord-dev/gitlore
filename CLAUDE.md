@@ -175,11 +175,17 @@ Pre-commit hook (husky + lint-staged) runs `oxlint --fix` and `oxfmt` on staged 
 ## Testing
 
 ```bash
-pnpm test                           # run all tests (231 core + 29 web)
+pnpm test                           # build, then run all tests (core + web + cli)
 pnpm test:core                      # core package tests with Vitest UI
 pnpm test:web                       # web package tests with Vitest UI
 pnpm test:coverage                  # coverage report
 ```
+
+`apps/cli`'s tests are integration tests: they spawn the built binary and
+analyze this repo, because the behavior worth pinning there (stdout flushing,
+exit codes, stderr/stdout separation) only exists in a real process. That is why
+`pnpm test` builds first — running `pnpm -r test` directly on a clean tree fails
+with an explicit "Run `pnpm build`" error rather than skipping.
 
 ## Running Locally
 
