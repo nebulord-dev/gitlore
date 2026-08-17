@@ -29,6 +29,12 @@ const MS_PER_DAY = 86_400_000;
  * Fraction of each file's commits authored by bots, keyed by file path.
  * Files with no commits in the window are absent rather than zero.
  */
+/**
+ * Deliberately keys on `isBotEmail` only. AI-authored commits classify as `ai`,
+ * not `bot`, and count as human churn here — a person prompted them and owns
+ * the result, so the ownership signal still holds. Only unattended automation
+ * (release bots, dependency bots) is machine churn for this purpose.
+ */
 function botChurnShareByFile(commits: RawCommit[]): Map<string, number> {
   const tally = new Map<string, { bot: number; total: number }>();
 
@@ -56,6 +62,9 @@ function repoIdleDays(commits: RawCommit[]): number {
     const ms = Date.parse(commit.date);
     if (!Number.isNaN(ms) && ms > newest) newest = ms;
   }
+  // No parseable dates: report zero idle days, which degrades the abandonment
+  // check back to the absolute `ageInDays > ABANDONED_AFTER_DAYS` behaviour
+  // rather than suppressing it. Unreachable with real git output.
   if (newest === 0) return 0;
   return Math.max(0, (Date.now() - newest) / MS_PER_DAY);
 }

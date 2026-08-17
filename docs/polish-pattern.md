@@ -179,6 +179,20 @@ The four analyzers in Batch 1 all share the "table is rotated hero" pathology. T
 - **Scope expansion:** Like blast-radius, the polish ticket exceeded its original bottom-panel-only spec — a forensic look at the rendered Rewrite Ratio tab against React data revealed every top-30 score tied at 100 (formula bug) and two of three alt-tabs duplicating other analyzers' heroes (hero audit). Same "*hero scope creep is OK when warranted*" precedent.
 - **Removes:** `RewriteRatioTab`'s per-file `SortableTable` (~107 lines). Inspector + diverging-bar already cover per-file detail.
 
+### `cursed-files` *(shipped — RELIC-307)*
+
+- **Bottom panel:** Table, kept. The Pending-table guess ("bottom table earns space (REASONS chips)") held — the reasons grid is the panel's whole value, and no other view shows *why* a file scored. Narrative-KPI was considered and rejected: it would surface one file's story and discard the multi-file comparison the reasons chips exist for.
+- **Row expand:** the per-file `narrative` string, which the analyzer had always emitted and nothing rendered. Same affordance as `HotspotsTab` (`SortableTable`'s existing `renderExpanded`). Filed under "Existing data, currently unused" — worth grepping other analyzers for the same pattern before their polish passes.
+- **Hero:** dropped `treemap` (`ChurnTreemap` — repo-wide churn of every file, the RELIC-333 firehose shape). `risk-heatmap` promoted to default, `scatter` retained.
+  - **Known gap:** `RiskHeatmap` does not read `report.cursedFiles` either, and is verbatim the `risk` preset's default. It's a closer proxy — it composes the same ownership / blast-radius / shame inputs that feed `curseScore` — but this preset still has no curse-score-native hero. Promoting the existing alt was chosen over building one in this pass; a dedicated hero (e.g. stacked contribution-by-reason bars per file) is the open follow-up.
+- **See also:** Churn, Bus Factor.
+- **Backend changes:**
+  - **Bot-churn exclusion.** Files whose commits are majority-bot (`BOT_CHURN_THRESHOLD = 0.5`, via `utils/authorClassification`) are scored, then withheld and named in `excludedBotFiles`. Motivated by gitrelic's own report, where the only two cursed files were `CHANGELOG.md` (94% `semantic-release-bot`) and `apps/cli/package.json` (79%) — machine-written files presented as the repo's top risks. AI-authored commits classify as `ai`, not `bot`, and deliberately count as human churn.
+  - **Age-paradox correction.** The `ageInDays > 180 && churnScore > 60` branch rendered as *"Still actively changing despite being a stale file"*, but `ageInDays` measures time since a file's **last** commit — so it described a file untouched for six months and asserted the opposite. Wrong in any repo; a dormant one (slow-life, last commit 337 days ago) made it fire on everything. Now measured against the repo's own last commit and reworded to *"Heavily churned, then untouched for N days"*. Not cosmetic: the reason carried +10, so slow-life dropped 4 cursed files → 2.
+  - **Shape change:** `cursedFiles` moved from `CursedFile[]` to `CursedFilesReport { files, excludedBotFiles, summary }`, matching every sibling analyzer. `normalizeReport` lifts the old array form.
+- **Empty state earns its keep.** With bot exclusion on, a healthy repo shows zero cursed files — which reads as broken unless the withheld list is shown. Rendered in **both** branches, not just when the table is empty: a repo can have surviving cursed files *and* withheld ones, and hiding the list in that case defeats the point of withholding transparently.
+- **Lesson for later polish tickets:** neither backend bug was visible from the code or from unit tests — the fixtures never triggered the age branch, and gitrelic's own repo is bot-heavy and never dormant. Both surfaced only by running the analyzer against an unrelated, long-abandoned repo. Polish passes should include at least one repo that is *not* this one.
+
 ### `parallel-dev` *(shipped — RELIC-309)*
 
 - **Decision context:** [RELIC-333](https://linear.app/nebulord/issue/RELIC-333) resolved — keep separate, differentiate. The shared `Swimlanes` and `Timeline` heroes are repo-wide commit-firehose visualizations that encode nothing about either analyzer's per-file score. Both heroes get **stripped from this preset entirely** (still alive in Contributors / Overview where they answer the right question).
@@ -291,7 +305,6 @@ Not yet decided. Will be filled in as each batch is worked through. Listed here 
 | Analyzer | Batch | Notes from initial screenshot review |
 |---|---|---|
 | `knowledge-concentration` (Knowledge Silos) | — | Panel shipped as the reference implementation, but **no docs page and no `docsPath`** — the docs half of the DoD is outstanding. Tracked at RELIC-319. |
-| `cursed-files` | TBD | Bottom table earns space (REASONS chips). Probably keeps current form. |
 | `test-coverage` | TBD | Treemap. Bottom table earns space (different unit). |
 | `loc` (Languages) | TBD | Stacked bars. Bottom table earns space (per-language vs per-directory). |
 | `hotspot` | TBD | Strong scatter hero, signals chips earn table's space. Probably keeps. |

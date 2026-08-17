@@ -122,49 +122,55 @@ export function CursedFilesTab({ report, onSelectFile }: CursedFilesTabProps) {
 
   const { files, excludedBotFiles } = report.cursedFiles;
 
+  // Rendered in both branches: a repo can have surviving cursed files *and*
+  // withheld ones, and hiding the list in that case defeats the point of
+  // withholding transparently rather than silently dropping.
+  const withheld = excludedBotFiles.length > 0 && (
+    <div className="flex flex-col gap-1 px-4 py-2">
+      <span className="text-text-tertiary text-[11px]">
+        {excludedBotFiles.length} file
+        {excludedBotFiles.length === 1 ? '' : 's'} withheld as machine-generated
+        churn:
+      </span>
+      <div className="flex flex-wrap gap-1">
+        {excludedBotFiles.map((f) => (
+          <Badge key={f} variant="stale">
+            {fileName(f)}
+          </Badge>
+        ))}
+      </div>
+    </div>
+  );
+
   if (files.length === 0) {
     return (
-      <div className="flex flex-col gap-2 p-4">
-        <span className="text-severity-healthy text-xs font-semibold">
+      <div className="flex flex-col gap-1">
+        <span className="text-severity-healthy px-4 pt-4 text-xs font-semibold">
           No cursed files found.
         </span>
-        {excludedBotFiles.length > 0 && (
-          // Without this the panel reads as broken rather than clean. These are
-          // files that scored as cursed but whose churn is automated.
-          <div className="flex flex-col gap-1">
-            <span className="text-text-tertiary text-[11px]">
-              {excludedBotFiles.length} file
-              {excludedBotFiles.length === 1 ? '' : 's'} withheld as
-              machine-generated churn:
-            </span>
-            <div className="flex flex-wrap gap-1">
-              {excludedBotFiles.map((f) => (
-                <Badge key={f} variant="stale">
-                  {fileName(f)}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        )}
+        {withheld}
       </div>
     );
   }
 
   return (
-    <SortableTable
-      data={files}
-      columns={columns}
-      rowKey={(c) => c.file}
-      onRowClick={(c) => onSelectFile(c.file)}
-      expandedKey={expandedFile}
-      onRowExpand={setExpandedFile}
-      // The analyzer has always produced a per-file narrative; nothing rendered
-      // it until now. Same expand affordance as HotspotsTab.
-      renderExpanded={(c) => (
-        <span className="text-text-secondary text-[11px] leading-relaxed">
-          {c.narrative}
-        </span>
-      )}
-    />
+    <div className="flex flex-col">
+      {withheld}
+      <SortableTable
+        data={files}
+        columns={columns}
+        rowKey={(c) => c.file}
+        onRowClick={(c) => onSelectFile(c.file)}
+        expandedKey={expandedFile}
+        onRowExpand={setExpandedFile}
+        // The analyzer has always produced a per-file narrative; nothing rendered
+        // it until now. Same expand affordance as HotspotsTab.
+        renderExpanded={(c) => (
+          <span className="text-text-secondary text-[11px] leading-relaxed">
+            {c.narrative}
+          </span>
+        )}
+      />
+    </div>
   );
 }
