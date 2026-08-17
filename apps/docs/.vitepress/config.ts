@@ -14,7 +14,6 @@ export default withMermaid(
     // as their pages land so genuine typos still surface in the build.
     ignoreDeadLinks: [
       '/analyzers/hotspots',
-      '/analyzers/cursed-files',
       '/analyzers/churn-velocity',
       '/analyzers/coupling',
       '/analyzers/knowledge-silos',
@@ -57,6 +56,7 @@ export default withMermaid(
             { text: 'Co-Authors / AI', link: '/analyzers/co-authors' },
             { text: 'Commit Timing', link: '/analyzers/commit-timing' },
             { text: 'Contributors', link: '/analyzers/contributors' },
+            { text: 'Cursed Files', link: '/analyzers/cursed-files' },
             { text: 'Ghost Files', link: '/analyzers/ghost-files' },
             { text: 'Parallel Dev', link: '/analyzers/parallel-dev' },
             { text: 'Renames', link: '/analyzers/renames' },

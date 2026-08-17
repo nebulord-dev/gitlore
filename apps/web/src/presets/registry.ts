@@ -181,6 +181,7 @@ export const PRESETS: Record<PresetId, PresetDefinition> = {
       defaultTab: 'cursed-files',
       altTabs: ['cursed-files'],
     },
+    docsPath: 'analyzers/cursed-files',
     metrics: cursedFilesMetrics,
   },
   churn: {
