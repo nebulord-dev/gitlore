@@ -171,8 +171,9 @@ export const PRESETS: Record<PresetId, PresetDefinition> = {
       // not read `report.cursedFiles` either, and is also the `risk` preset's
       // default. It is a closer proxy — it composes the same ownership, blast
       // radius and shame inputs that feed curseScore — but this preset still has
-      // no curse-score-native hero. Tracked as follow-up; promoting the existing
-      // alt was chosen over building one in this pass.
+      // no curse-score-native hero. Tracked at RELIC-343, which is blocked on
+      // core emitting per-reason point attribution; `CursedFile.reasons` is a
+      // bare string[] today, so nothing downstream can attribute score to cause.
       defaultViz: 'risk-heatmap',
       altTabs: ['risk-heatmap', 'scatter'],
     },
