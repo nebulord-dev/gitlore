@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { cleanup, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { prepareScatterData } from './HotspotScatter';
+import { HotspotScatter, prepareScatterData } from './HotspotScatter';
 import type { GitrelicReport } from '@gitrelic/core';
 
 function makeReport(): GitrelicReport {
@@ -82,5 +83,26 @@ describe('prepareScatterData', () => {
     });
     const points = prepareScatterData(report);
     expect(points.find((p) => p.file === 'orphan.ts')).toBeUndefined();
+  });
+});
+
+describe('HotspotScatter rendering', () => {
+  afterEach(() => cleanup());
+
+  it('renders a caption explaining the axes', () => {
+    // This hero shipped without one while 20 others had it, so an alt-tab
+    // reader got an unlabelled scatter. It is the default hero for `hotspots`
+    // and an alt for cursed-files, age-map and risk, so the gap was wide.
+    render(
+      <HotspotScatter
+        report={makeReport()}
+        selectedFile={null}
+        onSelectFile={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText(/x = commits/)).toBeTruthy();
+    expect(screen.getByText(/y = lines of code/)).toBeTruthy();
+    expect(screen.getByText(/Top-right is the danger zone/)).toBeTruthy();
   });
 });

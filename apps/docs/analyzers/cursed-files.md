@@ -87,13 +87,29 @@ This exists because it was the analyzer's single largest source of false signal.
 
 ## Reading the surfaces
 
+Every hero carries a **caption strip** along its bottom edge describing what the chart encodes. If you're ever unsure what you're looking at, read that first — it names the axes, the colour scale and the unit.
+
 ### The hero — `Risk` (default tab)
 
 A composite risk heatmap over the repository's directories, combining ownership, blast radius and shame inputs.
 
+> **Caption:** *Files scoring high across multiple risk axes · churn, blast radius, shame, ghost risk · color = severity tier*
+
+A legend row beneath the caption maps each colour to its severity tier.
+
 ::: warning Known gap
 The `Risk` hero does not read the cursed-files report itself — it composes the same underlying signals rather than the composite score. This preset has no curse-score-native hero yet; see [RELIC-343](https://linear.app/nebulord/issue/RELIC-343).
 :::
+
+### The hero — `Scatter` (alt tab)
+
+Every file plotted by churn against size, so you can see where the cursed files sit relative to the rest of the repository.
+
+> **Caption:** *Churn × size · x = commits · y = lines of code · bubble size = hotspot score*
+>
+> *Top-right is the danger zone: large files that change constantly. Click any bubble to inspect the file.*
+
+Useful as a sanity check on the composite score: a cursed file sitting in the bottom-left — few commits, small file — scored on ownership or shame rather than on volume, which is worth knowing before you act on it.
 
 ### The bottom panel — table
 
