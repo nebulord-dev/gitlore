@@ -100,7 +100,39 @@ if (opts.json) {
       branch: opts.branch,
       since,
     });
-    process.stdout.write(JSON.stringify(report, null, 2));
+    // A consumer that stops reading early (`gitrelic --json | head`) makes Node
+    // emit 'error' on stdout, which is fatal if unhandled. Awaiting the flush
+    // below is what makes that reachable — the old synchronous exit killed the
+    // process before the event could fire. Closing early is normal shell usage,
+    // not a failure, so exit 0.
+    process.stdout.on('error', (err: NodeJS.ErrnoException) => {
+      if (err.code === 'EPIPE') process.exit(0);
+      process.stderr.write(`Error: failed to write report: ${err.message}\n`);
+      process.exit(1);
+    });
+
+    // process.exit() discards whatever is still queued in Node's userspace
+    // write buffer. On a TTY stdout is synchronous so that never shows, but on
+    // a pipe — the whole point of --json — writes are async, and exiting
+    // immediately truncated the report at the pipe capacity (64KB) while still
+    // reporting success. Wait for the flush before exiting.
+    //
+    // write()'s callback receives an Error as its first argument on failure.
+    // Dropping it would reintroduce this PR's own bug by another route: a short
+    // write to a full disk would exit 0 with partial output.
+    const writeError = await new Promise<Error | null | undefined>(
+      (resolve) => {
+        process.stdout.write(JSON.stringify(report, null, 2), (err) =>
+          resolve(err),
+        );
+      },
+    );
+    if (writeError) {
+      process.stderr.write(
+        `Error: failed to write report: ${writeError.message}\n`,
+      );
+      process.exit(1);
+    }
     process.exit(0);
   } catch (err) {
     process.stderr.write(`Error: ${(err as Error).message}\n`);
