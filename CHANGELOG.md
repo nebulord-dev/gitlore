@@ -1,3 +1,10 @@
+# [0.48.0](https://github.com/nebulord-dev/gitrelic/compare/v0.47.2...v0.48.0) (2026-08-17)
+
+
+### Features
+
+* **web:** cursed-files polish (RELIC-307) ([#84](https://github.com/nebulord-dev/gitrelic/issues/84)) ([c426546](https://github.com/nebulord-dev/gitrelic/commit/c4265469a005aea482f722b89b9aec385f925925))
+
 ## [0.47.2](https://github.com/nebulord-dev/gitrelic/compare/v0.47.1...v0.47.2) (2026-08-17)
 
 
