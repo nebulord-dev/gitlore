@@ -9,9 +9,9 @@ export function overviewMetrics(report: GitrelicReport): Metric[] {
   return [
     {
       label: 'Cursed Files',
-      value: String(report.cursedFiles.length),
+      value: String(report.cursedFiles.files.length),
       color:
-        report.cursedFiles.length > 0
+        report.cursedFiles.files.length > 0
           ? 'var(--severity-critical)'
           : 'var(--severity-healthy)',
     },

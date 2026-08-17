@@ -163,8 +163,12 @@ export const PRESETS: Record<PresetId, PresetDefinition> = {
     label: 'Cursed Files',
     group: 'code-health',
     hero: {
-      defaultViz: 'treemap',
-      altTabs: ['treemap', 'risk-heatmap', 'scatter'],
+      // `treemap` (ChurnTreemap) is stripped: it renders every file in the repo
+      // by churn and encodes nothing about curse score, the same shared-firehose
+      // problem RELIC-333 resolved for parallel-dev and commit-timing. It still
+      // lives in Churn / Overview, where it answers the right question.
+      defaultViz: 'risk-heatmap',
+      altTabs: ['risk-heatmap', 'scatter'],
     },
     bottomPanel: {
       defaultTab: 'cursed-files',

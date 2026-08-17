@@ -54,7 +54,8 @@ function getNavGroups(report: GitrelicReport): NavGroup[] {
         {
           id: 'cursed-files',
           label: 'Cursed Files',
-          badge: report.cursedFiles.filter((c) => c.curseScore >= 70).length,
+          badge: report.cursedFiles.files.filter((c) => c.curseScore >= 70)
+            .length,
         },
         {
           id: 'dead-code',

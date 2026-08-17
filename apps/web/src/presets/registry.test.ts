@@ -40,7 +40,7 @@ function makeReport(): GitrelicReport {
       summary: '',
     },
     hotspots: { files: [], topHotspots: [], summary: '' },
-    cursedFiles: [],
+    cursedFiles: { files: [], excludedBotFiles: [], summary: '' },
     busFactors: { criticalFiles: [] },
     coupling: { pairs: [], topPairs: [], fileProfiles: [], summary: '' },
     deadCode: { totalDeadFiles: 0, totalDeadLines: 0, candidates: [] },

@@ -1694,59 +1694,63 @@ exports[`fixture regression > coupling report is stable 1`] = `
 `;
 
 exports[`fixture regression > cursed files list is stable 1`] = `
-[
-  {
-    "ageDays": 30,
-    "authors": 1,
-    "churn": 6,
-    "curseScore": 85,
-    "file": "src/helpers.ts",
-    "narrative": "src/helpers.ts has been touched in 30% of all commits by a single author. That person is a single point of failure.",
-    "reasons": [
-      "Modified in 30% of all commits",
-      "Single author owns 100% of changes",
-      "4 shame commits detected ("hack" appears repeatedly) — this file keeps breaking",
-    ],
-  },
-  {
-    "ageDays": 25,
-    "authors": 1,
-    "churn": 5,
-    "curseScore": 65,
-    "file": "src/index.ts",
-    "narrative": "src/index.ts has been touched in 25% of all commits by a single author. That person is a single point of failure.",
-    "reasons": [
-      "Modified in 25% of all commits",
-      "Single author owns 100% of changes",
-    ],
-  },
-  {
-    "ageDays": 70,
-    "authors": 1,
-    "churn": 4,
-    "curseScore": 65,
-    "file": "src/config.ts",
-    "narrative": "src/config.ts has seen 4 commits from 1 author — worth keeping an eye on.",
-    "reasons": [
-      "Frequently modified (4 commits)",
-      "Single author owns 100% of changes",
-      "1 shame commits detected ("hack" appears repeatedly) — this file keeps breaking",
-    ],
-  },
-  {
-    "ageDays": 84,
-    "authors": 1,
-    "churn": 3,
-    "curseScore": 65,
-    "file": "src/auth.ts",
-    "narrative": "src/auth.ts has seen 3 commits from 1 author — worth keeping an eye on.",
-    "reasons": [
-      "Frequently modified (3 commits)",
-      "Single author owns 100% of changes",
-      "2 shame commits detected ("fix" appears repeatedly) — this file keeps breaking",
-    ],
-  },
-]
+{
+  "excludedBotFiles": [],
+  "files": [
+    {
+      "ageDays": 30,
+      "authors": 1,
+      "churn": 6,
+      "curseScore": 85,
+      "file": "src/helpers.ts",
+      "narrative": "src/helpers.ts has been touched in 30% of all commits by a single author. That person is a single point of failure.",
+      "reasons": [
+        "Modified in 30% of all commits",
+        "Single author owns 100% of changes",
+        "4 shame commits detected ("hack" appears repeatedly) — this file keeps breaking",
+      ],
+    },
+    {
+      "ageDays": 25,
+      "authors": 1,
+      "churn": 5,
+      "curseScore": 65,
+      "file": "src/index.ts",
+      "narrative": "src/index.ts has been touched in 25% of all commits by a single author. That person is a single point of failure.",
+      "reasons": [
+        "Modified in 25% of all commits",
+        "Single author owns 100% of changes",
+      ],
+    },
+    {
+      "ageDays": 70,
+      "authors": 1,
+      "churn": 4,
+      "curseScore": 65,
+      "file": "src/config.ts",
+      "narrative": "src/config.ts has seen 4 commits from 1 author — worth keeping an eye on.",
+      "reasons": [
+        "Frequently modified (4 commits)",
+        "Single author owns 100% of changes",
+        "1 shame commits detected ("hack" appears repeatedly) — this file keeps breaking",
+      ],
+    },
+    {
+      "ageDays": 84,
+      "authors": 1,
+      "churn": 3,
+      "curseScore": 65,
+      "file": "src/auth.ts",
+      "narrative": "src/auth.ts has seen 3 commits from 1 author — worth keeping an eye on.",
+      "reasons": [
+        "Frequently modified (3 commits)",
+        "Single author owns 100% of changes",
+        "2 shame commits detected ("fix" appears repeatedly) — this file keeps breaking",
+      ],
+    },
+  ],
+  "summary": "4 cursed files. Worst is src/helpers.ts at 85/100.",
+}
 `;
 
 exports[`fixture regression > dead code report is stable 1`] = `

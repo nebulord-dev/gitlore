@@ -11,7 +11,7 @@ export interface GitrelicReport {
   busFactors: BusFactorReport;
   ageMap: AgeMapReport;
   contributors: ContributorReport;
-  cursedFiles: CursedFile[];
+  cursedFiles: CursedFilesReport;
   forensics: ForensicsReport;
   parallelDev: ParallelDevReport;
   loc: LocReport;
@@ -148,6 +148,15 @@ export interface CursedFile {
   authors: number;
   ageDays: number;
   narrative: string; // e.g. "This file has been touched by 7 authors in 89 commits — it's either the heart of the codebase or a ticking time bomb."
+}
+
+export interface CursedFilesReport {
+  files: CursedFile[];
+  // Files that scored as cursed but whose churn is overwhelmingly automated
+  // (semantic-release, dependabot, …). Surfaced rather than silently dropped so
+  // an empty panel is explainable instead of just looking broken.
+  excludedBotFiles: string[];
+  summary: string;
 }
 
 // ─── Forensics (commit message shame scoring) ──────────────────────────────────

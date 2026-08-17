@@ -32,7 +32,7 @@ import type {
   ComplexityTrendReport,
   ContributorReport,
   CouplingReport,
-  CursedFile,
+  CursedFilesReport,
   DeadCodeReport,
   ForensicsReport,
   GhostFilesReport,
@@ -145,7 +145,9 @@ describe('fixture regression', () => {
   });
 
   it('cursed files list is stable', () => {
-    expect(scrubHashes<CursedFile[]>(report.cursedFiles)).toMatchSnapshot();
+    expect(
+      scrubHashes<CursedFilesReport>(report.cursedFiles),
+    ).toMatchSnapshot();
   });
 
   it('forensics report is stable', () => {

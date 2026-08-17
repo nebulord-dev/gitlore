@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 import Badge from '../shared/Badge';
 import { type Column, SortableTable } from '../shared/SortableTable';
 import { Tooltip } from '../shared/Tooltip';
@@ -34,6 +36,8 @@ function getAuthors(
 }
 
 export function CursedFilesTab({ report, onSelectFile }: CursedFilesTabProps) {
+  const [expandedFile, setExpandedFile] = useState<string | null>(null);
+
   const columns: Column<CursedFile>[] = [
     {
       key: 'file',
@@ -116,12 +120,51 @@ export function CursedFilesTab({ report, onSelectFile }: CursedFilesTabProps) {
     },
   ];
 
+  const { files, excludedBotFiles } = report.cursedFiles;
+
+  if (files.length === 0) {
+    return (
+      <div className="flex flex-col gap-2 p-4">
+        <span className="text-severity-healthy text-xs font-semibold">
+          No cursed files found.
+        </span>
+        {excludedBotFiles.length > 0 && (
+          // Without this the panel reads as broken rather than clean. These are
+          // files that scored as cursed but whose churn is automated.
+          <div className="flex flex-col gap-1">
+            <span className="text-text-tertiary text-[11px]">
+              {excludedBotFiles.length} file
+              {excludedBotFiles.length === 1 ? '' : 's'} withheld as
+              machine-generated churn:
+            </span>
+            <div className="flex flex-wrap gap-1">
+              {excludedBotFiles.map((f) => (
+                <Badge key={f} variant="stale">
+                  {fileName(f)}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <SortableTable
-      data={report.cursedFiles}
+      data={files}
       columns={columns}
       rowKey={(c) => c.file}
       onRowClick={(c) => onSelectFile(c.file)}
+      expandedKey={expandedFile}
+      onRowExpand={setExpandedFile}
+      // The analyzer has always produced a per-file narrative; nothing rendered
+      // it until now. Same expand affordance as HotspotsTab.
+      renderExpanded={(c) => (
+        <span className="text-text-secondary text-[11px] leading-relaxed">
+          {c.narrative}
+        </span>
+      )}
     />
   );
 }

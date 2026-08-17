@@ -1,3 +1,4 @@
+import { isBotEmail } from '../utils/authorClassification.js';
 import type {
   ChurnReport,
   BusFactorReport,
@@ -5,7 +6,59 @@ import type {
   ForensicsReport,
   ParallelDevReport,
 } from '../types.js';
-import type { CursedFile } from '../types.js';
+import type { CursedFile, CursedFilesReport } from '../types.js';
+import type { RawCommit } from '../utils/git.js';
+
+/**
+ * Share of a file's commits that must come from bot accounts before it is
+ * treated as machine-generated churn rather than a human signal. A simple
+ * majority: below this a real person is still driving most of the changes.
+ */
+const BOT_CHURN_THRESHOLD = 0.5;
+
+/**
+ * How long a file must have gone quiet *before the repository itself did* to
+ * count as abandoned. Measured relative to the repo's last commit rather than
+ * to today, so a dormant repo doesn't mark every file it contains.
+ */
+const ABANDONED_AFTER_DAYS = 180;
+
+const MS_PER_DAY = 86_400_000;
+
+/**
+ * Fraction of each file's commits authored by bots, keyed by file path.
+ * Files with no commits in the window are absent rather than zero.
+ */
+function botChurnShareByFile(commits: RawCommit[]): Map<string, number> {
+  const tally = new Map<string, { bot: number; total: number }>();
+
+  for (const commit of commits) {
+    const bot = isBotEmail(commit.authorEmail);
+    for (const file of commit.files) {
+      const entry = tally.get(file) ?? { bot: 0, total: 0 };
+      entry.total += 1;
+      if (bot) entry.bot += 1;
+      tally.set(file, entry);
+    }
+  }
+
+  const shares = new Map<string, number>();
+  for (const [file, { bot, total }] of tally) {
+    if (total > 0) shares.set(file, bot / total);
+  }
+  return shares;
+}
+
+/** Days between the repository's most recent commit and now. */
+function repoIdleDays(commits: RawCommit[]): number {
+  let newest = 0;
+  for (const commit of commits) {
+    const ms = Date.parse(commit.date);
+    if (!Number.isNaN(ms) && ms > newest) newest = ms;
+  }
+  if (newest === 0) return 0;
+  return Math.max(0, (Date.now() - newest) / MS_PER_DAY);
+}
 
 /**
  * Analyzes the repository to identify "cursed" files that exhibit high churn, low bus factor, and/or age paradox characteristics.
@@ -14,8 +67,9 @@ import type { CursedFile } from '../types.js';
  * @param ageMap - The age map report for the repository.
  * @param forensics - The forensics report for the repository.
  * @param parallelDev - The parallel development report for the repository.
- * @param totalCommits - The total number of commits in the repository.
- * @returns An array of cursed files with their associated metrics and narrative.
+ * @param commits - Every commit in the analyzed window. Needed to attribute
+ *   churn to humans vs bots and to date the repository's own last activity.
+ * @returns Cursed files, plus the ones withheld as machine-generated churn.
  */
 export function findCursedFiles(
   churn: ChurnReport,
@@ -23,8 +77,12 @@ export function findCursedFiles(
   ageMap: AgeMapReport,
   forensics: ForensicsReport,
   parallelDev: ParallelDevReport,
-  totalCommits: number,
-): CursedFile[] {
+  commits: RawCommit[],
+): CursedFilesReport {
+  const totalCommits = commits.length;
+  const botShare = botChurnShareByFile(commits);
+  const idleDays = repoIdleDays(commits);
+  const excludedBotFiles: string[] = [];
   // Index the other reports by file for O(1) lookups
   const churnByFile = new Map(churn.files.map((f) => [f.file, f]));
   const busFactorByFile = new Map(busFactor.files.map((f) => [f.file, f]));
@@ -85,9 +143,17 @@ export function findCursedFiles(
       }
     }
 
-    // Age paradox: old but still churning
-    if (a && a.ageInDays > 180 && c.churnScore > 60) {
-      reasons.push('Still actively changing despite being a stale file');
+    // Abandoned hot file: heavily churned, then left untouched. Measured
+    // against the repo's own last commit, not today — in a dormant repo every
+    // file is old, and an absolute threshold would flag all of them.
+    if (
+      a &&
+      a.ageInDays - idleDays > ABANDONED_AFTER_DAYS &&
+      c.churnScore > 60
+    ) {
+      reasons.push(
+        `Heavily churned, then untouched for ${Math.round(a.ageInDays)} days`,
+      );
       curseScore += 10;
     }
 
@@ -129,6 +195,13 @@ export function findCursedFiles(
 
     if (curseScore < 50 || reasons.length === 0) continue;
 
+    // Withheld only after scoring, so the exclusion list names files that would
+    // otherwise have topped the panel — the ones worth explaining away.
+    if ((botShare.get(file) ?? 0) > BOT_CHURN_THRESHOLD) {
+      excludedBotFiles.push(file);
+      continue;
+    }
+
     const narrative = buildNarrative(
       file,
       c.commitCount,
@@ -148,7 +221,28 @@ export function findCursedFiles(
     });
   }
 
-  return cursed.sort((a, b) => b.curseScore - a.curseScore);
+  const files = cursed.sort((a, b) => b.curseScore - a.curseScore);
+  excludedBotFiles.sort();
+
+  return {
+    files,
+    excludedBotFiles,
+    summary: buildSummary(files, excludedBotFiles),
+  };
+}
+
+function buildSummary(files: CursedFile[], excludedBotFiles: string[]): string {
+  const excluded =
+    excludedBotFiles.length > 0
+      ? ` ${excludedBotFiles.length} file${excludedBotFiles.length === 1 ? '' : 's'} withheld as machine-generated churn.`
+      : '';
+
+  if (files.length === 0) {
+    return `No cursed files found.${excluded}`;
+  }
+
+  const worst = files[0];
+  return `${files.length} cursed file${files.length === 1 ? '' : 's'}. Worst is ${worst.file} at ${worst.curseScore}/100.${excluded}`;
 }
 
 function buildNarrative(

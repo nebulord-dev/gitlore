@@ -74,7 +74,20 @@ export function normalizeReport(raw: Partial<GitrelicReport>): GitrelicReport {
       top3CommitShare: raw.contributors?.top3CommitShare ?? 0,
       newcomers90d: raw.contributors?.newcomers90d ?? 0,
     },
-    cursedFiles: raw.cursedFiles ?? [],
+    // Reports written before cursedFiles became a report object carry a bare
+    // array here. Lift those so old reports keep rendering instead of crashing
+    // on `.files`.
+    cursedFiles: Array.isArray(raw.cursedFiles)
+      ? {
+          files: raw.cursedFiles,
+          excludedBotFiles: [],
+          summary: 'Not available',
+        }
+      : {
+          files: raw.cursedFiles?.files ?? [],
+          excludedBotFiles: raw.cursedFiles?.excludedBotFiles ?? [],
+          summary: raw.cursedFiles?.summary ?? 'Not available',
+        },
     forensics: raw.forensics ?? {
       files: [],
       shameLeaderboard: [],
