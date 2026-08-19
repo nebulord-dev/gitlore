@@ -28,6 +28,59 @@ jobs:
             exit 1
           fi
 
+      # Squash merging replaces every commit subject with the PR title, so that
+      # single line is all semantic-release ever sees. A PR containing a fix but
+      # titled `docs:` therefore releases nothing, and the fix sits unpublished
+      # on main. That happened in #85, which stranded a core behaviour fix plus
+      # two user-visible web changes until a manual release commit shipped them.
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Needs the base branch to diff against; the default shallow clone has
+          # no merge base.
+          fetch-depth: 0
+
+      - name: PR title must not under-report its commits
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          # Untrusted input stays in the environment and is never interpolated
+          # into this script.
+          release_rank() {
+            case "$1" in
+              feat!*|feat\(*\)!*|feat:*|feat\(*\):*) echo 2 ;;
+              fix!*|fix\(*\)!*|fix:*|fix\(*\):*)     echo 1 ;;
+              *) echo 0 ;;
+            esac
+          }
+
+          title_rank=$(release_rank "$PR_TITLE")
+          best=0
+          best_subject=''
+          while IFS= read -r subject; do
+            r=$(release_rank "$subject")
+            if (( r > best )); then
+              best=$r
+              best_subject="$subject"
+            fi
+          done < <(git log --format=%s "$BASE_SHA..$HEAD_SHA")
+
+          if (( best > title_rank )); then
+            echo "::error::PR title under-reports its commits, so squashing would discard the release."
+            echo ""
+            echo "  PR title:        $PR_TITLE"
+            echo "  Highest commit:  $best_subject"
+            echo ""
+            echo "Squash merging keeps only the PR title, so semantic-release would"
+            echo "see a non-releasing type and publish nothing. Retitle the PR to"
+            echo "match its most significant change."
+            exit 1
+          fi
+
+          echo "PR title's release type covers its commits."
+
   build:
     name: Build
     runs-on: ubuntu-latest
