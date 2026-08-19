@@ -215,4 +215,52 @@ describe('analyzer docsPath', () => {
       }
     }
   });
+
+  /**
+   * Analyzers still awaiting their Polish Initiative pass, and therefore
+   * legitimately without a docs page. Remove an entry when its page lands.
+   *
+   * This is the backlog, encoded. Mirrors `ignoreDeadLinks` in the VitePress
+   * config, which carries the same list for the same reason and instructs you
+   * to drop entries as pages arrive.
+   */
+  const AWAITING_POLISH: PresetId[] = [
+    'complexity-trend',
+    'coupling',
+    'dead-code',
+    'hotspots',
+    'knowledge-silos',
+    'languages',
+    'test-coverage',
+  ];
+
+  it('every analyzer-tier preset has docsPath, except those awaiting polish', () => {
+    // Deliberately an exact match rather than a subset check, so the list
+    // cannot rot in either direction: forgetting docsPath on a newly polished
+    // analyzer fails here, and so does documenting one without removing it
+    // from the list. The existing "page on disk implies docsPath" assertion
+    // above short-circuits when there is no page at all — which is precisely
+    // how RELIC-307 shipped with neither a page nor a docsPath and stayed
+    // green.
+    const undocumented = Object.values(PRESETS)
+      .filter((p) => p.tier === 'analyzer' && p.docsPath === undefined)
+      .map((p) => p.id)
+      .sort();
+
+    expect(
+      undocumented,
+      'analyzer presets without docsPath drifted from AWAITING_POLISH — add the docsPath, or drop the entry once its page ships',
+    ).toEqual([...AWAITING_POLISH].sort());
+  });
+
+  it('nothing in AWAITING_POLISH already has a docs page on disk', () => {
+    // Stops the list being used to silence a real gap: if the page exists, the
+    // analyzer is not awaiting polish and the entry must go.
+    for (const id of AWAITING_POLISH) {
+      expect(
+        existsSync(join(DOCS_DIR, `${id}.md`)),
+        `${id} is listed as awaiting polish but already has a docs page — remove it from AWAITING_POLISH and set docsPath`,
+      ).toBe(false);
+    }
+  });
 });
