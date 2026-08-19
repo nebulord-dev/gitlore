@@ -1,3 +1,10 @@
+## [0.48.1](https://github.com/nebulord-dev/gitrelic/compare/v0.48.0...v0.48.1) (2026-08-19)
+
+
+### Bug Fixes
+
+* **core:** release AI-authorship classification fix ([a00a188](https://github.com/nebulord-dev/gitrelic/commit/a00a188f03e734e565e9eaf29e349915d5b2f0db)), closes [#85](https://github.com/nebulord-dev/gitrelic/issues/85)
+
 # [0.48.0](https://github.com/nebulord-dev/gitrelic/compare/v0.47.2...v0.48.0) (2026-08-17)
 
 
