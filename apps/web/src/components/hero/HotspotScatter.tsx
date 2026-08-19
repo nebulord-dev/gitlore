@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { scaleLinear } from 'd3-scale';
 
 import { categoryColor } from '../../utils/colors';
+import { HeroCaption } from '../shared/HeroCaption';
 import type { GitrelicReport } from '@gitrelic/core';
 
 interface HotspotScatterProps {
@@ -92,139 +93,148 @@ export function HotspotScatter({
   const plotH = dims.height - PADDING.top - PADDING.bottom;
 
   return (
-    <div ref={containerRef} className="w-full h-full relative">
-      <svg width={dims.width} height={dims.height}>
-        <g transform={`translate(${PADDING.left},${PADDING.top})`}>
-          {/* Quadrant hint */}
-          <text
-            x={plotW - 4}
-            y={4}
-            textAnchor="end"
-            fontSize={9}
-            fill="rgba(255,255,255,0.12)"
-          >
-            high churn + high complexity
-          </text>
-
-          {/* X axis */}
-          <line
-            x1={0}
-            y1={plotH}
-            x2={plotW}
-            y2={plotH}
-            stroke="var(--border-primary)"
-          />
-          <text
-            x={plotW / 2}
-            y={plotH + 30}
-            textAnchor="middle"
-            fontSize={10}
-            fill="var(--text-tertiary)"
-          >
-            Churn (commits)
-          </text>
-
-          {/* X axis ticks */}
-          {xScale.ticks(5).map((tick) => (
-            <g
-              key={`x-${tick}`}
-              transform={`translate(${xScale(tick)},${plotH})`}
+    // containerRef stays on the plot wrapper rather than the outer flex column:
+    // it both sizes the SVG and anchors the tooltip's coordinates, so measuring
+    // the outer element would size the plot as if the caption weren't there.
+    <div className="w-full h-full flex flex-col">
+      <div ref={containerRef} className="flex-1 min-h-0 relative">
+        <svg width={dims.width} height={dims.height}>
+          <g transform={`translate(${PADDING.left},${PADDING.top})`}>
+            {/* Quadrant hint */}
+            <text
+              x={plotW - 4}
+              y={4}
+              textAnchor="end"
+              fontSize={9}
+              fill="rgba(255,255,255,0.12)"
             >
-              <line y2={4} stroke="var(--border-primary)" />
-              <text
-                y={14}
-                textAnchor="middle"
-                fontSize={8}
-                fill="var(--text-tertiary)"
+              high churn + high complexity
+            </text>
+
+            {/* X axis */}
+            <line
+              x1={0}
+              y1={plotH}
+              x2={plotW}
+              y2={plotH}
+              stroke="var(--border-primary)"
+            />
+            <text
+              x={plotW / 2}
+              y={plotH + 30}
+              textAnchor="middle"
+              fontSize={10}
+              fill="var(--text-tertiary)"
+            >
+              Churn (commits)
+            </text>
+
+            {/* X axis ticks */}
+            {xScale.ticks(5).map((tick) => (
+              <g
+                key={`x-${tick}`}
+                transform={`translate(${xScale(tick)},${plotH})`}
               >
-                {tick}
-              </text>
-            </g>
-          ))}
+                <line y2={4} stroke="var(--border-primary)" />
+                <text
+                  y={14}
+                  textAnchor="middle"
+                  fontSize={8}
+                  fill="var(--text-tertiary)"
+                >
+                  {tick}
+                </text>
+              </g>
+            ))}
 
-          {/* Y axis */}
-          <line
-            x1={0}
-            y1={0}
-            x2={0}
-            y2={plotH}
-            stroke="var(--border-primary)"
-          />
-          <text
-            transform={`translate(-35,${plotH / 2}) rotate(-90)`}
-            textAnchor="middle"
-            fontSize={10}
-            fill="var(--text-tertiary)"
-          >
-            Lines of Code
-          </text>
+            {/* Y axis */}
+            <line
+              x1={0}
+              y1={0}
+              x2={0}
+              y2={plotH}
+              stroke="var(--border-primary)"
+            />
+            <text
+              transform={`translate(-35,${plotH / 2}) rotate(-90)`}
+              textAnchor="middle"
+              fontSize={10}
+              fill="var(--text-tertiary)"
+            >
+              Lines of Code
+            </text>
 
-          {/* Y axis ticks */}
-          {yScale.ticks(5).map((tick) => (
-            <g key={`y-${tick}`} transform={`translate(0,${yScale(tick)})`}>
-              <line x2={-4} stroke="var(--border-primary)" />
-              <text
-                x={-8}
-                textAnchor="end"
-                dominantBaseline="central"
-                fontSize={8}
-                fill="var(--text-tertiary)"
-              >
-                {tick}
-              </text>
-            </g>
-          ))}
+            {/* Y axis ticks */}
+            {yScale.ticks(5).map((tick) => (
+              <g key={`y-${tick}`} transform={`translate(0,${yScale(tick)})`}>
+                <line x2={-4} stroke="var(--border-primary)" />
+                <text
+                  x={-8}
+                  textAnchor="end"
+                  dominantBaseline="central"
+                  fontSize={8}
+                  fill="var(--text-tertiary)"
+                >
+                  {tick}
+                </text>
+              </g>
+            ))}
 
-          {/* Data points */}
-          {points.map((p) => {
-            const cx = xScale(p.churn);
-            const cy = yScale(p.loc);
-            const r = rScale(p.hotspotScore);
-            const isSelected = selectedFile === p.file;
+            {/* Data points */}
+            {points.map((p) => {
+              const cx = xScale(p.churn);
+              const cy = yScale(p.loc);
+              const r = rScale(p.hotspotScore);
+              const isSelected = selectedFile === p.file;
 
-            return (
-              <circle
-                key={p.file}
-                cx={cx}
-                cy={cy}
-                r={r}
-                fill={categoryColor(p.category, 0.4)}
-                stroke={
-                  isSelected
-                    ? 'var(--accent-primary)'
-                    : categoryColor(p.category, 0.7)
-                }
-                strokeWidth={isSelected ? 2.5 : 1}
-                onClick={() => onSelectFile(p.file)}
-                onMouseEnter={(e) => {
-                  const rect = containerRef.current?.getBoundingClientRect();
-                  if (rect) {
-                    setTooltip({
-                      x: e.clientX - rect.left,
-                      y: e.clientY - rect.top,
-                      point: p,
-                    });
+              return (
+                <circle
+                  key={p.file}
+                  cx={cx}
+                  cy={cy}
+                  r={r}
+                  fill={categoryColor(p.category, 0.4)}
+                  stroke={
+                    isSelected
+                      ? 'var(--accent-primary)'
+                      : categoryColor(p.category, 0.7)
                   }
-                }}
-                onMouseLeave={() => setTooltip(null)}
-                className="cursor-pointer"
-              />
-            );
-          })}
-        </g>
-      </svg>
-      {tooltip && (
-        <div
-          className="absolute bg-tooltip-bg border border-border-primary rounded px-2.5 py-1.5 text-[10px] text-tooltip-text pointer-events-none z-20 max-w-[250px] whitespace-nowrap"
-          style={{ left: tooltip.x + 12, top: tooltip.y - 8 }}
-        >
-          <div className="font-semibold mb-0.5">{tooltip.point.file}</div>
-          <div className="text-text-secondary">
-            Churn: {tooltip.point.churn} commits · LOC: {tooltip.point.loc} ·
-            Score: {tooltip.point.hotspotScore}
+                  strokeWidth={isSelected ? 2.5 : 1}
+                  onClick={() => onSelectFile(p.file)}
+                  onMouseEnter={(e) => {
+                    const rect = containerRef.current?.getBoundingClientRect();
+                    if (rect) {
+                      setTooltip({
+                        x: e.clientX - rect.left,
+                        y: e.clientY - rect.top,
+                        point: p,
+                      });
+                    }
+                  }}
+                  onMouseLeave={() => setTooltip(null)}
+                  className="cursor-pointer"
+                />
+              );
+            })}
+          </g>
+        </svg>
+        {tooltip && (
+          <div
+            className="absolute bg-tooltip-bg border border-border-primary rounded px-2.5 py-1.5 text-[10px] text-tooltip-text pointer-events-none z-20 max-w-[250px] whitespace-nowrap"
+            style={{ left: tooltip.x + 12, top: tooltip.y - 8 }}
+          >
+            <div className="font-semibold mb-0.5">{tooltip.point.file}</div>
+            <div className="text-text-secondary">
+              Churn: {tooltip.point.churn} commits · LOC: {tooltip.point.loc} ·
+              Score: {tooltip.point.hotspotScore}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
+      <HeroCaption
+        primary="Churn × size · x = commits · y = lines of code · bubble size = hotspot score"
+        subtitle="Top-right is the danger zone: large files that change constantly. Click any bubble to inspect the file."
+      />
     </div>
   );
 }
