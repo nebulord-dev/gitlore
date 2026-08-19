@@ -39,7 +39,7 @@ Run `gitrelic` in any git repository and get a narrative health report on the co
 
 ### Diagnostics
 
-- **Cursed files** — the intersection of all of the above: high churn + concentrated ownership + age paradoxes
+- **Cursed files** — the intersection of all of the above: high churn + concentrated ownership + abandoned hot files, with machine-generated churn withheld
 - **Shame score** — commit message forensics: files with repeated reverts, hotfixes, and hacks
 - **Test coverage proxy** — test file proximity per directory
 - **LOC & language breakdown** — lines of code with language detection
@@ -94,8 +94,14 @@ Ratio-based: a file with 1 revert in 2 commits scores higher than 1 revert in 10
 
 ### Curse score
 
-A composite of churn, bus factor risk, age anomalies, and shame. Files scoring ≥ 50 appear
-in the Cursed Files panel. Shame contributes up to +20 points to the curse score.
+A composite of churn, bus factor risk, abandonment, shame, and parallel development. Files
+scoring ≥ 50 appear in the Cursed Files panel. Shame and parallel development each contribute
+up to +20 points.
+
+The floor of 50 sits above any single signal's maximum, so a file must trip at least two
+independent analyzers to be cursed at all — a healthy repo legitimately reports none. Files
+whose commits are majority bot-authored are scored, then withheld and listed separately, so
+release bots churning a `CHANGELOG` don't crowd out real findings.
 
 ## Setup
 

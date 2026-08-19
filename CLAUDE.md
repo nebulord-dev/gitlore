@@ -25,13 +25,13 @@ Workspace names in `pnpm --filter <n>` commands: `@gitrelic/core`, `gitrelic` (N
 - `src/runner.ts` — orchestrates all analyzers, entry point is `runGitrelic()`
 - `src/types.ts` — all TypeScript interfaces (`GitrelicReport`, `ChurnReport`, etc.)
 - `src/utils/git.ts` — raw git primitives (parsing `git log`, `git ls-files`, `Co-authored-by` trailers via git's native trailer parser into `RawCommit.coAuthors`)
-- `src/utils/authorClassification.ts` — pure-function AI/bot/human classifier (Claude / Copilot / Aider / Devin / Cursor + dependabot / renovate / semantic-release / github-actions). Shared infrastructure; co-author consumes today, Contributors will adopt for bot filtering later.
+- `src/utils/authorClassification.ts` — pure-function AI/bot/human classifier (Claude / Copilot / Aider / Devin / Cursor + dependabot / renovate / semantic-release / github-actions). Shared infrastructure; consumed by co-author and by cursed-files, which uses it to withhold files whose churn is majority bot-authored. Use `classifyAuthor`, not `isBotEmail`, when AI commits should count as human — only the former checks AI patterns first.
 - `src/analyzers/` — 22 analyzers, each with a corresponding `.test.ts`:
   - `churn.ts` — file churn frequency analysis
   - `bus-factor.ts` — ownership concentration per file
   - `age-map.ts` — last-commit age per file
   - `contributors.ts` — per-author stats and profiles
-  - `cursed-files.ts` — cross-analyzer risk scoring
+  - `cursed-files.ts` — cross-analyzer risk scoring; withholds majority-bot churn
   - `forensics.ts` — commit message shame scoring
   - `parallel-dev.ts` — multi-author overlap detection per week
   - `loc.ts` — lines of code + language breakdown
