@@ -45,7 +45,7 @@ Bus factor, knowledge concentration, ghost files (owned by inactive authors), co
 Age maps, dead code candidates, blast radius, coupling maps, parallel development detection, rename tracking, and commit timing stress patterns.
 
 ### Diagnostics
-Cursed files (high churn + concentrated ownership + age paradoxes), shame scores (commit message forensics), test coverage proximity, and LOC/language breakdown.
+Cursed files (high churn + concentrated ownership + abandonment, excluding bot-generated churn), shame scores (commit message forensics), test coverage proximity, and LOC/language breakdown.
 
 ## 22 Analyzers
 
